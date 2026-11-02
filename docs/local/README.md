@@ -96,6 +96,14 @@ uv pip install --python /tmp/mflux-venv/bin/python mflux
   --output assets/local/watercolor-bg.png
 ```
 
+The theme also composites locally generated per-node icons from
+`assets/local/icons/` and per-panel watercolor washes from
+`assets/local/panels/`. Regenerate both with:
+
+```bash
+./scripts/generate_local_icons.sh
+```
+
 The theme supports Japanese labels; `rsvg-convert` is used to produce PNG/PDF.
 Without `rsvg-convert`, the SVG is still written.
 

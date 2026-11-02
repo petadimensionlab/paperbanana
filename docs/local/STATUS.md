@@ -36,8 +36,8 @@ This file is the resume point. Read it first after an interrupted session.
 | 3b. TikZ from IR | DONE | `dot -Tplain` -> standalone TikZ, `pdflatex` verified |
 | 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
 | 5. Fork/public release | DONE | public fork + CI green + `v0.3.0+petadim.1` GitHub release |
-| 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels/icons/title, optional local mflux background |
-| 7. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
+| 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, panel washes |
+| 7. Benchmarks / img2img | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark; optional ControlNet/img2img |
 
 ## Verified locally
 
@@ -76,8 +76,8 @@ Phase 7: benchmarks and richer hybrid output.
 1. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
 2. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
 3. Add `paperbanana local doctor` and `local render` as the next CLI milestone.
-4. Optional: generate per-node icon sprites with local diffusion and composite
-   them into the infographic cards (current background is page-level only).
+4. Optional: img2img / ControlNet over the infographic render, keeping the SVG
+   text overlay exact; or generate group-level illustrations.
 
 Release: https://github.com/petadimensionlab/paperbanana/releases/tag/v0.3.0%2Bpetadim.1
 
