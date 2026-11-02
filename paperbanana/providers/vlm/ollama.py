@@ -23,10 +23,18 @@ class OllamaVLM(VLMProvider):
         model: str = "qwen2.5-vl",
         base_url: str = "http://localhost:11434/v1",
         json_mode: bool = False,
+        reasoning_effort: Optional[str] = "none",
+        request_timeout: float = 900.0,
+        image_max_edge: int = 1280,
+        image_format: str = "JPEG",
     ):
         self._model = model
         self._base_url = base_url.rstrip("/")
         self._json_mode = json_mode
+        self._reasoning_effort = reasoning_effort
+        self._request_timeout = request_timeout
+        self._image_max_edge = image_max_edge
+        self._image_format = image_format.upper()
         self._client: httpx.AsyncClient | None = None
 
     @property
@@ -43,8 +51,45 @@ class OllamaVLM(VLMProvider):
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(base_url=self._base_url, timeout=300.0)
+            self._client = httpx.AsyncClient(
+                base_url=self._base_url,
+                timeout=self._request_timeout,
+            )
         return self._client
+
+    def _prepare_image(self, image: Image.Image) -> str:
+        """Downscale and encode an image for a local vision request.
+
+        Local VLMs tile images, so sending a 2K reference figure at full size
+        wastes both upload bandwidth and vision tokens.  The default 1280px
+        long edge keeps labels legible while roughly halving the token count.
+        """
+        prepared = image
+        if self._image_format == "JPEG" and prepared.mode != "RGB":
+            prepared = prepared.convert("RGB")
+        if self._image_max_edge and max(prepared.size) > self._image_max_edge:
+            resized = prepared.copy()
+            resized.thumbnail(
+                (self._image_max_edge, self._image_max_edge),
+                Image.Resampling.LANCZOS,
+            )
+            prepared = resized
+        return image_to_base64(prepared, format=self._image_format)
+
+    @staticmethod
+    def _extract_message_text(message: dict) -> str:
+        """Return assistant text, failing loudly when only reasoning was emitted."""
+        text = message.get("content")
+        if text is None or not str(text).strip():
+            reasoning = message.get("reasoning") or message.get("reasoning_content")
+            if reasoning:
+                raise RuntimeError(
+                    "Ollama returned reasoning but no content. "
+                    "The model spent its token budget thinking. Set "
+                    "OLLAMA_REASONING_EFFORT=none (or use a non-thinking model)."
+                )
+            return ""
+        return str(text)
 
     async def close(self) -> None:
         if self._client is not None:
@@ -74,7 +119,12 @@ class OllamaVLM(VLMProvider):
         content: list[dict] = [
             {
                 "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{image_to_base64(img)}"},
+                "image_url": {
+                    "url": (
+                        f"data:image/{self._image_format.lower()};base64,"
+                        f"{self._prepare_image(img)}"
+                    )
+                },
             }
             for img in (images or [])
         ]
@@ -86,6 +136,8 @@ class OllamaVLM(VLMProvider):
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if self._reasoning_effort:
+            payload["reasoning_effort"] = self._reasoning_effort
         if response_format == "json" and self._json_mode:
             payload["response_format"] = {"type": "json_object"}
         resp = await self._get_client().post("/chat/completions", json=payload)
@@ -103,4 +155,4 @@ class OllamaVLM(VLMProvider):
                 output_tokens=usage.get("completion_tokens", 0),
             )
 
-        return data["choices"][0]["message"]["content"]
+        return self._extract_message_text(data["choices"][0]["message"])

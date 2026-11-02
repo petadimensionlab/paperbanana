@@ -153,6 +153,12 @@ class Settings(BaseSettings):
     ollama_base_url: str = Field(default="http://localhost:11434/v1", alias="OLLAMA_BASE_URL")
     ollama_model: Optional[str] = Field(default=None, alias="OLLAMA_MODEL")
     ollama_json_mode: bool = Field(default=False, alias="OLLAMA_JSON_MODE")
+    ollama_reasoning_effort: Optional[str] = Field(
+        default="none", alias="OLLAMA_REASONING_EFFORT"
+    )
+    ollama_timeout: float = Field(default=900.0, alias="OLLAMA_TIMEOUT")
+    ollama_image_max_edge: int = Field(default=1280, alias="OLLAMA_IMAGE_MAX_EDGE")
+    ollama_image_format: str = Field(default="JPEG", alias="OLLAMA_IMAGE_FORMAT")
     openai_local_base_url: str = Field(
         default="http://localhost:8000/v1",
         alias="OPENAI_LOCAL_BASE_URL",
@@ -262,6 +268,47 @@ class Settings(BaseSettings):
         if v < 0:
             raise ValueError("exemplar_retrieval_max_retries must be >= 0")
         return v
+
+    @field_validator("ollama_reasoning_effort", mode="before")
+    @classmethod
+    def validate_ollama_reasoning_effort(cls, v: Any) -> Optional[str]:
+        """Normalize the Ollama reasoning effort hint (empty means provider default)."""
+        if v is None:
+            return None
+        value = str(v).strip().lower()
+        if value in ("", "default", "auto"):
+            return None
+        if value not in ("none", "low", "medium", "high"):
+            raise ValueError(
+                "ollama_reasoning_effort must be one of: none, low, medium, high "
+                "(or empty for the provider default)"
+            )
+        return value
+
+    @field_validator("ollama_timeout")
+    @classmethod
+    def validate_ollama_timeout(cls, v: float) -> float:
+        """Validate the Ollama request timeout is positive."""
+        if v <= 0:
+            raise ValueError("ollama_timeout must be > 0")
+        return v
+
+    @field_validator("ollama_image_max_edge")
+    @classmethod
+    def validate_ollama_image_max_edge(cls, v: int) -> int:
+        """Validate the local vision image downscale threshold."""
+        if v < 0:
+            raise ValueError("ollama_image_max_edge must be >= 0 (0 disables downscaling)")
+        return v
+
+    @field_validator("ollama_image_format", mode="before")
+    @classmethod
+    def validate_ollama_image_format(cls, v: Any) -> str:
+        """Validate the image encoding used for local vision requests."""
+        value = "JPEG" if v is None else str(v).strip().upper()
+        if value not in ("PNG", "JPEG", "WEBP"):
+            raise ValueError("ollama_image_format must be one of: PNG, JPEG, WEBP")
+        return value
 
     @field_validator("vector_export", mode="before")
     @classmethod

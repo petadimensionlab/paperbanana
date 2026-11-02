@@ -69,13 +69,60 @@ async def test_generate_text_only(vlm: OllamaVLM):
 
 @pytest.mark.asyncio
 async def test_generate_with_image(vlm: OllamaVLM, monkeypatch):
-    monkeypatch.setattr("paperbanana.providers.vlm.ollama.image_to_base64", lambda _: "b64data")
+    monkeypatch.setattr(
+        "paperbanana.providers.vlm.ollama.image_to_base64",
+        lambda *_args, **_kwargs: "b64data",
+    )
     client = _FakeClient("described")
     vlm._client = client
     result = await vlm.generate("Describe", images=[Image.new("RGB", (4, 4))])
     assert result == "described"
     content = client.captured["json"]["messages"][-1]["content"]
     assert any(c["type"] == "image_url" and "b64data" in c["image_url"]["url"] for c in content)
+
+
+@pytest.mark.asyncio
+async def test_reasoning_effort_default_is_sent(vlm: OllamaVLM):
+    client = _FakeClient("ok")
+    vlm._client = client
+    await vlm.generate("Hello")
+    assert client.captured["json"]["reasoning_effort"] == "none"
+
+
+@pytest.mark.asyncio
+async def test_reasoning_effort_can_be_disabled():
+    vlm = OllamaVLM(model="test", reasoning_effort=None)
+    vlm._client = _FakeClient("ok")
+    await vlm.generate("Hello")
+    assert "reasoning_effort" not in vlm._client.captured["json"]
+
+
+@pytest.mark.asyncio
+async def test_images_are_downscaled_and_encoded(monkeypatch):
+    captured: dict = {}
+
+    def _fake_b64(image, format="PNG"):
+        captured["size"] = image.size
+        captured["format"] = format
+        return "b64"
+
+    monkeypatch.setattr("paperbanana.providers.vlm.ollama.image_to_base64", _fake_b64)
+    vlm = OllamaVLM(model="test", image_max_edge=512, image_format="JPEG")
+    vlm._client = _FakeClient("ok")
+    await vlm.generate("Describe", images=[Image.new("RGB", (2000, 1000))])
+    assert captured["format"] == "JPEG"
+    assert max(captured["size"]) == 512
+    content = vlm._client.captured["json"]["messages"][-1]["content"]
+    assert content[0]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+
+
+def test_extract_message_text_raises_when_only_reasoning():
+    with pytest.raises(RuntimeError, match="reasoning but no content"):
+        OllamaVLM._extract_message_text({"content": "", "reasoning": "thinking..."})
+
+
+def test_extract_message_text_allows_empty_without_reasoning():
+    assert OllamaVLM._extract_message_text({"content": ""}) == ""
 
 
 @pytest.mark.asyncio

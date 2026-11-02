@@ -151,6 +151,10 @@ class ProviderRegistry:
                 model=settings.ollama_model or settings.vlm_model,
                 base_url=settings.ollama_base_url,
                 json_mode=settings.ollama_json_mode,
+                reasoning_effort=settings.ollama_reasoning_effort,
+                request_timeout=settings.ollama_timeout,
+                image_max_edge=settings.ollama_image_max_edge,
+                image_format=settings.ollama_image_format,
             )
         elif provider == "openai_local":
             from paperbanana.providers.vlm.openai import OpenAIVLM
