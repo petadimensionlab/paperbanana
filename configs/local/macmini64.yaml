@@ -1,0 +1,34 @@
+# Mac mini 64GB: quality-first within a ~40GB memory budget.
+# Use 32K context on the Ollama server (OLLAMA_CONTEXT_LENGTH=32768) and
+# OLLAMA_KV_CACHE_TYPE=q8_0. Do not run a diffusion image model concurrently.
+vlm:
+  provider: ollama
+  model: qwen3.5:35b-a3b
+  ollama_model: qwen3.5:35b-a3b
+  ollama_base_url: http://127.0.0.1:11434/v1
+  ollama_json_mode: true
+  ollama_reasoning_effort: none
+  ollama_image_max_edge: 1024
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_quality
+  refinement_iterations: 2
+  auto_refine: true
+  max_iterations: 2
+  num_retrieval_examples: 4
+  optimize_inputs: true
+  output_resolution: 1k
+  num_candidates: 1
+  venue: neurips
+  vector_export: both
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  export_tikz: true
+  save_iterations: true
+  save_prompts: false

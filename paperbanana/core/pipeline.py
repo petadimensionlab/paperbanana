@@ -13,7 +13,10 @@ from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
 
 from paperbanana.agents.caption import CaptionAgent
 from paperbanana.agents.critic import CriticAgent
+from paperbanana.agents.fast_ir import FastIRPlannerAgent
+from paperbanana.agents.ir_critic import IRCriticAgent
 from paperbanana.agents.ir_planner import IRPlannerAgent
+from paperbanana.agents.ir_visualizer import IRVisualizerAgent
 from paperbanana.agents.optimizer import InputOptimizerAgent
 from paperbanana.agents.planner import PlannerAgent
 from paperbanana.agents.retriever import RetrieverAgent
@@ -65,6 +68,7 @@ from paperbanana.vector.graphviz_render import (
     find_dot_executable,
     render_dot_to_file,
 )
+from paperbanana.vector.tikz_from_ir import render_ir_to_tikz
 
 logger = structlog.get_logger()
 
@@ -202,7 +206,14 @@ class PaperBananaPipeline:
             self._demo_mode = True
         else:
             self._vlm = ProviderRegistry.create_vlm(self.settings)
-            self._image_gen = ProviderRegistry.create_image_gen(self.settings)
+            if self.settings.render_mode != "diffusion":
+                # IR modes never call an image model. Avoid demanding image
+                # credentials that the run will not use.
+                from paperbanana.providers.image_gen.dummy import DummyImageGen
+
+                self._image_gen = DummyImageGen()
+            else:
+                self._image_gen = ProviderRegistry.create_image_gen(self.settings)
             self._demo_mode = False
 
         # Cost tracking (optional — active when budget is set or always for reporting)
@@ -257,9 +268,14 @@ class PaperBananaPipeline:
         self.retriever = RetrieverAgent(
             self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
         )
-        self.planner = PlannerAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
-        )
+        if self.settings.render_mode == "ir_fast":
+            self.planner = FastIRPlannerAgent(
+                self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            )
+        else:
+            self.planner = PlannerAgent(
+                self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            )
         self.ir_planner = IRPlannerAgent(
             self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
         )
@@ -272,16 +288,28 @@ class PaperBananaPipeline:
         self.structurer = StructurerAgent(
             self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
         )
-        self.visualizer = VisualizerAgent(
-            self._image_gen,
-            self._vlm,
-            prompt_dir=prompt_dir,
-            output_dir=str(self._run_dir),
-            prompt_recorder=self._prompt_recorder,
-            output_resolution=self.settings.output_resolution,
-            image_quality=self.settings.image_quality,
-        )
+        if self.settings.render_mode != "diffusion":
+            self.visualizer = IRVisualizerAgent(
+                self._vlm,
+                prompt_dir=prompt_dir,
+                output_dir=str(self._run_dir),
+                prompt_recorder=self._prompt_recorder,
+                image_gen=self._image_gen,
+            )
+        else:
+            self.visualizer = VisualizerAgent(
+                self._image_gen,
+                self._vlm,
+                prompt_dir=prompt_dir,
+                output_dir=str(self._run_dir),
+                prompt_recorder=self._prompt_recorder,
+                output_resolution=self.settings.output_resolution,
+                image_quality=self.settings.image_quality,
+            )
         self.critic = CriticAgent(
+            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+        )
+        self.ir_critic = IRCriticAgent(
             self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
         )
         self.caption_agent = CaptionAgent(
@@ -628,23 +656,52 @@ class PaperBananaPipeline:
                 ),
             )
             critic_start = time.perf_counter()
-            try:
-                critique = await _call_with_retry(
-                    "critic",
-                    self.critic.run,
-                    image_path=image_path,
-                    description=current_description,
-                    source_context=input.source_context,
-                    caption=input.communicative_intent,
-                    diagram_type=input.diagram_type,
-                )
-            except Exception:
-                logger.warning(
-                    "Critic failed after retries, accepting current image",
-                    iteration=iter_index,
-                    exc_info=True,
-                )
+            if self.settings.render_mode == "ir_fast":
+                # Speed mode: one deterministic IR render, no VLM critic call.
                 critique = CritiqueResult()
+            elif self.settings.render_mode == "ir_quality" and getattr(
+                self.visualizer, "last_ir", None
+            ) is not None:
+                try:
+                    ir_review = await _call_with_retry(
+                        "ir_critic",
+                        self.ir_critic.run,
+                        image_path=image_path,
+                        diagram_ir=self.visualizer.last_ir,
+                        source_context=input.source_context,
+                        caption=input.communicative_intent,
+                    )
+                    critique = IRCriticAgent.to_critique_result(ir_review)
+                    if ir_review.revised_ir is not None:
+                        # The next VLM call must not re-structure the revised
+                        # description; hand the corrected IR straight to the
+                        # renderer instead.
+                        self.visualizer.set_pending_ir(ir_review.revised_ir)
+                except Exception:
+                    logger.warning(
+                        "IR critic failed after retries, accepting current diagram",
+                        iteration=iter_index,
+                        exc_info=True,
+                    )
+                    critique = CritiqueResult()
+            else:
+                try:
+                    critique = await _call_with_retry(
+                        "critic",
+                        self.critic.run,
+                        image_path=image_path,
+                        description=current_description,
+                        source_context=input.source_context,
+                        caption=input.communicative_intent,
+                        diagram_type=input.diagram_type,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Critic failed after retries, accepting current image",
+                        iteration=iter_index,
+                        exc_info=True,
+                    )
+                    critique = CritiqueResult()
             critic_seconds = time.perf_counter() - critic_start
             _emit_progress(
                 progress_callback,
@@ -901,27 +958,31 @@ class PaperBananaPipeline:
         )
         self._emit_progress("vector_export_started", mode=vector_mode)
 
-        try:
-            ir_model = await self.structurer.run(
-                description=final_description,
-                source_context=source_context,
-                caption=caption,
-            )
-        except Exception as e:
-            logger.warning("Vector structurer failed", error=str(e))
-            save_json({"error": str(e)}, run_dir / "vector_export_error.json")
-            struct_seconds = time.perf_counter() - struct_start
-            _emit_progress(
-                progress_callback,
-                PipelineProgressEvent(
-                    stage=PipelineProgressStage.STRUCTURER_END,
-                    message="Structurer failed",
-                    seconds=struct_seconds,
-                    extra={"error": str(e)},
-                ),
-            )
-            self._emit_progress("vector_export_failed", error=str(e))
-            return None, None
+        precomputed_ir = getattr(self.visualizer, "last_ir", None)
+        if self.settings.render_mode != "diffusion" and precomputed_ir is not None:
+            ir_model = precomputed_ir
+        else:
+            try:
+                ir_model = await self.structurer.run(
+                    description=final_description,
+                    source_context=source_context,
+                    caption=caption,
+                )
+            except Exception as e:
+                logger.warning("Vector structurer failed", error=str(e))
+                save_json({"error": str(e)}, run_dir / "vector_export_error.json")
+                struct_seconds = time.perf_counter() - struct_start
+                _emit_progress(
+                    progress_callback,
+                    PipelineProgressEvent(
+                        stage=PipelineProgressStage.STRUCTURER_END,
+                        message="Structurer failed",
+                        seconds=struct_seconds,
+                        extra={"error": str(e)},
+                    ),
+                )
+                self._emit_progress("vector_export_failed", error=str(e))
+                return None, None
 
         save_json(ir_model.model_dump(), run_dir / "diagram_ir.json")
         dot_src = diagram_ir_to_dot(ir_model)
@@ -1037,6 +1098,10 @@ class PaperBananaPipeline:
                 self._run_dir / "run_input.json",
             )
             save_json(diagram_ir.model_dump(), self._run_dir / "diagram_ir_input.json")
+
+        if isinstance(self.visualizer, IRVisualizerAgent):
+            self.visualizer.set_context(source_context, caption)
+            self.visualizer.set_pending_ir(diagram_ir)
 
         for i in range(total_iters):
             if budget_exceeded:
@@ -1383,6 +1448,11 @@ class PaperBananaPipeline:
 
         # ── Phase 1: Linear Planning ─────────────────────────────────
 
+        if isinstance(self.visualizer, IRVisualizerAgent):
+            self.visualizer.set_context(
+                input.source_context, input.communicative_intent
+            )
+
         # Step 1: Retriever — find relevant examples (timer includes external call when enabled)
         logger.info("Phase 1: Retrieval")
         if self._cost_tracker:
@@ -1397,7 +1467,14 @@ class PaperBananaPipeline:
         self._emit_progress("phase1_retrieval_started")
         retrieval_start = time.perf_counter()
 
-        if input.reference_ids:
+        if self.settings.render_mode == "ir_fast":
+            # Speed mode: no exemplar retrieval. FastIRPlanner is text-only and
+            # does not use reference images.
+            examples = []
+            retrieval_mode = "skipped_fast_ir"
+            external_candidate_ids: list[str] = []
+            logger.info("Skipping retrieval for ir_fast render mode")
+        elif input.reference_ids:
             # Manual override: look up each ID, skip automatic retrieval
             examples = []
             missing_ids = []
@@ -1492,7 +1569,9 @@ class PaperBananaPipeline:
             caption=input.communicative_intent,
             examples=examples,
             diagram_type=input.diagram_type,
-            supported_ratios=getattr(self.visualizer.image_gen, "supported_ratios", None),
+            supported_ratios=getattr(
+                getattr(self.visualizer, "image_gen", None), "supported_ratios", None
+            ),
             input_images=input.input_images,
         )
         planning_seconds = time.perf_counter() - planning_start
@@ -1524,22 +1603,26 @@ class PaperBananaPipeline:
         )
         self._emit_progress("phase1_styling_started")
         styling_start = time.perf_counter()
-        try:
-            optimized_description = await _call_with_retry(
-                "stylist",
-                self.stylist.run,
-                description=description,
-                guidelines=guidelines,
-                source_context=input.source_context,
-                caption=input.communicative_intent,
-                diagram_type=input.diagram_type,
-            )
-        except Exception:
-            logger.warning(
-                "Stylist failed after retries, falling back to planner output",
-                exc_info=True,
-            )
+        if self.settings.render_mode == "ir_fast":
+            # The fast planner already emits a compact IR-derived description.
             optimized_description = description
+        else:
+            try:
+                optimized_description = await _call_with_retry(
+                    "stylist",
+                    self.stylist.run,
+                    description=description,
+                    guidelines=guidelines,
+                    source_context=input.source_context,
+                    caption=input.communicative_intent,
+                    diagram_type=input.diagram_type,
+                )
+            except Exception:
+                logger.warning(
+                    "Stylist failed after retries, falling back to planner output",
+                    exc_info=True,
+                )
+                optimized_description = description
         styling_seconds = time.perf_counter() - styling_start
         _emit_progress(
             progress_callback,
@@ -1566,6 +1649,11 @@ class PaperBananaPipeline:
                 self._run_dir / "planning.json",
             )
 
+        if isinstance(self.planner, FastIRPlannerAgent) and self.planner.last_ir is not None:
+            # Hand the already-planned IR straight to the renderer so fast mode
+            # never pays for a second Structurer call.
+            self.visualizer.set_pending_ir(self.planner.last_ir)
+
         # ── Phase 2: Iterative Refinement ─────────────────────────────
 
         # Aspect ratio priority: user-specified > venue default (venue.yaml)
@@ -1588,12 +1676,20 @@ class PaperBananaPipeline:
 
         vector_formats = ["svg", "pdf"] if self.settings.vector_export != "none" else None
 
-        if self.settings.auto_refine:
+        if self.settings.render_mode == "ir_fast":
+            total_iters = 1
+        elif self.settings.auto_refine:
             total_iters = self.settings.max_iterations
         else:
             total_iters = self.settings.refinement_iterations
 
         num_candidates = self.settings.num_candidates
+        if self.settings.render_mode == "ir_fast" and num_candidates != 1:
+            logger.warning(
+                "ir_fast renders a single deterministic IR; forcing num_candidates=1",
+                requested=num_candidates,
+            )
+            num_candidates = 1
         if not 1 <= num_candidates <= 8:
             raise ValueError(f"num_candidates must be between 1 and 8, got {num_candidates}")
 
@@ -1642,27 +1738,40 @@ class PaperBananaPipeline:
 
         if iterations and output_format == "svg":
             if input.diagram_type == DiagramType.METHODOLOGY:
-                try:
-                    diagram_ir = await self.ir_planner.run(
-                        source_context=input.source_context,
-                        caption=input.communicative_intent,
-                        styled_description=current_description,
-                    )
-                    ir_planner_status = "success"
-                    logger.info("IR planner produced structured diagram IR")
-                except Exception as e:
-                    ir_planner_status = "fallback"
-                    ir_planner_error = str(e)
-                    logger.warning(
-                        "IR planner failed; falling back to heuristic IR",
-                        error=str(e),
-                    )
-                    diagram_ir = extract_diagram_ir(
-                        current_description,
-                        title=input.communicative_intent or "Methodology Diagram",
-                    )
+                reuse_ir = getattr(self.visualizer, "last_ir", None)
+                if self.settings.render_mode != "diffusion" and reuse_ir is not None:
+                    diagram_ir = reuse_ir
+                    ir_planner_status = "reused"
+                else:
+                    try:
+                        diagram_ir = await self.ir_planner.run(
+                            source_context=input.source_context,
+                            caption=input.communicative_intent,
+                            styled_description=current_description,
+                        )
+                        ir_planner_status = "success"
+                        logger.info("IR planner produced structured diagram IR")
+                    except Exception as e:
+                        ir_planner_status = "fallback"
+                        ir_planner_error = str(e)
+                        logger.warning(
+                            "IR planner failed; falling back to heuristic IR",
+                            error=str(e),
+                        )
+                        diagram_ir = extract_diagram_ir(
+                            current_description,
+                            title=input.communicative_intent or "Methodology Diagram",
+                        )
                 save_json(diagram_ir.model_dump(), self._run_dir / "diagram_ir.json")
-                save_svg_from_ir(diagram_ir, final_output_path)
+                if self.settings.render_mode != "diffusion":
+                    dot_src = diagram_ir_to_dot(diagram_ir)
+                    if not render_dot_to_file(dot_src, final_output_path, "svg"):
+                        logger.warning(
+                            "Graphviz SVG export failed; falling back to simple SVG renderer"
+                        )
+                        save_svg_from_ir(diagram_ir, final_output_path)
+                else:
+                    save_svg_from_ir(diagram_ir, final_output_path)
             else:
                 save_raster_wrapped_svg(iterations[-1].image_path, final_output_path)
 
@@ -1696,17 +1805,31 @@ class PaperBananaPipeline:
             tikz_start = time.perf_counter()
             tikz_error: str | None = None
             try:
-                tikz_source = await self.tikz_exporter.run(
-                    image_path=final_output_path,
-                    source_context=input.source_context,
-                    caption=input.communicative_intent,
-                    diagram_type=input.diagram_type,
-                    description=current_description,
-                    source_label=str(self._run_dir),
-                    model_label=getattr(self._vlm, "model_name", ""),
-                    venue=self.settings.venue,
-                    version=_get_version(),
-                )
+                if (
+                    self.settings.render_mode != "diffusion"
+                    and input.diagram_type == DiagramType.METHODOLOGY
+                    and getattr(self.visualizer, "last_ir", None) is not None
+                ):
+                    # Deterministic TikZ from the same IR that produced the
+                    # vector figure: labels and edges never go through the VLM.
+                    tikz_source = render_ir_to_tikz(
+                        self.visualizer.last_ir,
+                        font_package="times"
+                        if self.settings.venue in ("neurips", "icml", "acl", "ieee")
+                        else None,
+                    )
+                else:
+                    tikz_source = await self.tikz_exporter.run(
+                        image_path=final_output_path,
+                        source_context=input.source_context,
+                        caption=input.communicative_intent,
+                        diagram_type=input.diagram_type,
+                        description=current_description,
+                        source_label=str(self._run_dir),
+                        model_label=getattr(self._vlm, "model_name", ""),
+                        venue=self.settings.venue,
+                        version=_get_version(),
+                    )
                 tex_path = Path(final_output_path).with_suffix(".tex")
                 tex_path.write_text(tikz_source, encoding="utf-8")
                 tikz_path = str(tex_path)
@@ -1888,6 +2011,10 @@ class PaperBananaPipeline:
         run_dir = Path(resume_state.run_dir)
         self.run_id = resume_state.run_id
         self._sync_run_scoped_agents()
+        if isinstance(self.visualizer, IRVisualizerAgent):
+            self.visualizer.set_context(
+                resume_state.source_context, resume_state.communicative_intent
+            )
 
         if self.settings.auto_refine:
             total_iters = self.settings.max_iterations

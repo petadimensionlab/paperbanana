@@ -1,0 +1,33 @@
+# Quality profile: full planning + IR critic + vector export.
+# Recommended on M3 Max 128GB (35B Q8) or shinjimac-studio 128GB (122B remote).
+vlm:
+  provider: ollama
+  model: qwen3.5:35b-a3b
+  ollama_model: qwen3.5:35b-a3b
+  ollama_base_url: http://127.0.0.1:11434/v1
+  ollama_json_mode: true
+  ollama_reasoning_effort: none
+  ollama_image_max_edge: 1280
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_quality
+  refinement_iterations: 3
+  auto_refine: true
+  max_iterations: 3
+  num_retrieval_examples: 6
+  optimize_inputs: true
+  output_resolution: 2k
+  num_candidates: 1
+  venue: neurips
+  vector_export: both
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  export_tikz: true
+  save_iterations: true
+  save_prompts: false

@@ -1,0 +1,30 @@
+# shinjimac-studio (128GB) as a Tailnet Ollama server: speed profile.
+# Requires the pb-speed alias (FROM qwen3.5:9b, PARAMETER num_ctx 32768).
+vlm:
+  provider: ollama
+  model: pb-speed
+  ollama_model: pb-speed
+  ollama_base_url: http://100.127.45.60:11434/v1
+  ollama_json_mode: true
+  ollama_reasoning_effort: none
+  ollama_image_max_edge: 1280
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_fast
+  refinement_iterations: 1
+  auto_refine: false
+  num_retrieval_examples: 2
+  optimize_inputs: false
+  output_resolution: 1k
+  num_candidates: 1
+  venue: neurips
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  save_iterations: true
+  save_prompts: false

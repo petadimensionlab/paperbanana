@@ -1,0 +1,40 @@
+You review a rendered scientific diagram against its structured graph (IR).
+
+Judge only content and structure:
+- missing or extra nodes/modules
+- wrong or missing labels
+- wrong arrow direction or missing connections
+- wrong or missing groups/phases
+
+Do NOT ask for colors, gradients, icons, shadows, or other decoration.
+Do not ask for a figure title.
+
+Return ONLY a JSON object with these keys:
+- "needs_revision": true or false
+- "issues": array of short, specific strings (empty when no revision is needed)
+- "revised_ir": a complete corrected IR object, or null when no revision is needed
+
+The IR object has:
+- "title": string
+- "layout_direction": "LR" or "TB"
+- "nodes": array of objects with "id", "label", optional "lane", optional "shape"
+- "edges": array of objects with "source", "target", optional "label"
+- "groups": array of objects with "id", "label", "node_ids"
+
+Rules for "revised_ir":
+1. Preserve every correct node ID and label. Change only what is wrong.
+2. Use concise English labels (<= 8 words) grounded in the source context.
+3. Every edge must reference an existing node ID. Do not invent modules.
+4. Keep the graph connected and readable (4-16 nodes).
+5. If the diagram is already correct, return "revised_ir": null.
+
+Figure caption:
+{caption}
+
+Current IR JSON:
+{diagram_ir}
+
+Methodology context:
+{source_context}
+
+Return the JSON object now.

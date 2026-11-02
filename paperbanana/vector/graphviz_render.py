@@ -129,15 +129,20 @@ def diagram_ir_to_dot(ir: DiagramIR) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_dot_to_file(dot_source: str, output_path: str | Path, fmt: str) -> bool:
-    """Run `dot -T{fmt}` to write output_path. fmt is 'svg' or 'pdf'."""
+def render_dot_to_file(
+    dot_source: str,
+    output_path: str | Path,
+    fmt: str,
+    dpi: int = 200,
+) -> bool:
+    """Run `dot -T{fmt}` to write output_path. fmt is 'png', 'svg', or 'pdf'."""
     dot_bin = find_dot_executable()
     if not dot_bin:
-        logger.warning("Graphviz `dot` not found on PATH; skipping vector render")
+        logger.warning("Graphviz `dot` not found on PATH; skipping render")
         return False
     fmt = fmt.lower()
-    if fmt not in ("svg", "pdf"):
-        raise ValueError("fmt must be svg or pdf")
+    if fmt not in ("png", "svg", "pdf"):
+        raise ValueError("fmt must be png, svg, or pdf")
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp_path: str | None = None
@@ -152,7 +157,7 @@ def render_dot_to_file(dot_source: str, output_path: str | Path, fmt: str) -> bo
             tmp_path = tmp.name
         assert tmp_path is not None
         result = subprocess.run(
-            [dot_bin, f"-T{fmt}", "-o", str(out), tmp_path],
+            [dot_bin, f"-T{fmt}", f"-Gdpi={max(1, int(dpi))}", "-o", str(out), tmp_path],
             capture_output=True,
             text=True,
             timeout=120,

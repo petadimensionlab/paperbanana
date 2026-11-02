@@ -1,0 +1,26 @@
+You convert a scientific methodology section into a compact diagram graph.
+
+Return ONLY one JSON object. No markdown, no code fences, no commentary.
+
+Required keys:
+- "title": short English figure title (no "Figure 1:" prefix).
+- "layout_direction": "LR" or "TB".
+- "nodes": array of objects with "id", "label", and optional "lane" and "shape".
+- "edges": array of objects with "source", "target", and optional "label".
+- "groups": optional array of objects with "id", "label", and "node_ids".
+
+Rules:
+1. Extract only the main modules, data artifacts, and the flow between them. Aim for 4-12 nodes.
+2. Labels must be concise English (<= 8 words), using the exact technical terms from the source. Translate non-English sources into English labels.
+3. Do not include a figure title as a node. Do not add decorative or explanatory-only nodes.
+4. Every edge must reference node IDs that exist in "nodes". Prefer a connected flow.
+5. Use 2-4 groups only when the source has clear phases or subsystems.
+6. IDs must be stable, unique, and ASCII (for example: n1, n2, encoder, decoder).
+
+Methodology section:
+{source_context}
+
+Figure caption / communicative intent:
+{caption}
+
+Output the JSON object now.

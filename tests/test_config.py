@@ -162,3 +162,39 @@ def test_effective_image_model_atlas_override():
         atlascloud_image_model="google/imagen4-fast",
     )
     assert settings.effective_image_model == "google/imagen4-fast"
+
+
+def test_render_mode_default_is_diffusion():
+    assert Settings().render_mode == "diffusion"
+
+
+@pytest.mark.parametrize("mode", ["ir_fast", "ir_quality", "DIFFUSION"])
+def test_render_mode_accepts_known_modes(mode):
+    assert Settings(render_mode=mode).render_mode == mode.lower()
+
+
+def test_render_mode_rejects_unknown():
+    with pytest.raises(ValidationError, match="render_mode must be"):
+        Settings(render_mode="svg")
+
+
+def test_ollama_local_defaults():
+    settings = Settings()
+    assert settings.ollama_reasoning_effort == "none"
+    assert settings.ollama_timeout == 900.0
+    assert settings.ollama_image_max_edge == 1280
+    assert settings.ollama_image_format == "JPEG"
+
+
+def test_ollama_reasoning_effort_empty_means_provider_default():
+    assert Settings(ollama_reasoning_effort="").ollama_reasoning_effort is None
+
+
+def test_ollama_reasoning_effort_invalid():
+    with pytest.raises(ValidationError, match="ollama_reasoning_effort"):
+        Settings(ollama_reasoning_effort="maximum")
+
+
+def test_effective_vlm_model_tracks_ollama_model():
+    settings = Settings(vlm_provider="ollama", ollama_model="qwen3.5:9b")
+    assert settings.effective_vlm_model == "qwen3.5:9b"

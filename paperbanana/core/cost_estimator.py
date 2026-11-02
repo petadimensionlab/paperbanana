@@ -80,14 +80,17 @@ def estimate_cost(
     # Phase 2: Iterative refinement. Multi-candidate fan-out runs Phase 2
     # once per candidate (Phase 1 planning is shared), so visualizer and
     # critic costs scale by num_candidates.
+    render_mode = getattr(settings, "render_mode", "diffusion")
     vis_total = 0.0
     critic_total = 0.0
     for _ in range(iterations * num_candidates):
         if diagram_type == DiagramType.STATISTICAL_PLOT:
             vis_total += _vlm_cost("visualizer_vlm")
-        else:
+        elif render_mode == "diffusion":
             vis_total += _image_cost()
-        critic_total += _vlm_cost("critic")
+        # IR modes render deterministically with Graphviz: no image API calls.
+        if render_mode != "ir_fast":
+            critic_total += _vlm_cost("critic")
     breakdown["visualizer"] = vis_total
     breakdown["critic"] = critic_total
 
@@ -97,6 +100,8 @@ def estimate_cost(
         notes.append(f"VLM pricing unknown for {vlm_provider}/{vlm_model}")
     if image_pricing is None:
         notes.append(f"Image pricing unknown for {image_provider}/{image_model}")
+    if render_mode != "diffusion":
+        notes.append("IR render mode: no image API calls (Graphviz/TikZ output)")
     if settings.auto_refine:
         notes.append(
             f"Auto-refine: estimated for max {iterations} iterations; "

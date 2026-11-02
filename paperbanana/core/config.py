@@ -17,6 +17,7 @@ ExemplarRetrievalMode = Literal["external_only", "external_then_rerank"]
 # backward compatibility with earlier Literal-based typing.
 Venue = str
 VectorExportMode = Literal["none", "svg", "pdf", "both"]
+RenderMode = Literal["diffusion", "ir_fast", "ir_quality"]
 
 
 class VLMConfig(BaseSettings):
@@ -90,6 +91,7 @@ class Settings(BaseSettings):
         description="User venue style pack directory (default: ~/.config/paperbanana/venues)",
     )
     vector_export: VectorExportMode = "none"
+    render_mode: RenderMode = Field(default="diffusion", alias="RENDER_MODE")
     num_candidates: int = Field(
         default=1,
         ge=1,
@@ -187,6 +189,10 @@ class Settings(BaseSettings):
             return self.atlascloud_vlm_model
         if self.vlm_provider == "bedrock" and self.bedrock_vlm_model:
             return self.bedrock_vlm_model
+        if self.vlm_provider == "ollama" and self.ollama_model:
+            return self.ollama_model
+        if self.vlm_provider == "openai_local" and self.openai_vlm_model:
+            return self.openai_vlm_model
         return self.vlm_model
 
     @property
@@ -310,6 +316,15 @@ class Settings(BaseSettings):
             raise ValueError("ollama_image_format must be one of: PNG, JPEG, WEBP")
         return value
 
+    @field_validator("render_mode", mode="before")
+    @classmethod
+    def validate_render_mode(cls, v: Any) -> str:
+        """Validate the rendering backend."""
+        value = "diffusion" if v is None else str(v).strip().lower()
+        if value not in ("diffusion", "ir_fast", "ir_quality"):
+            raise ValueError("render_mode must be diffusion, ir_fast, or ir_quality")
+        return value
+
     @field_validator("vector_export", mode="before")
     @classmethod
     def validate_vector_export(cls, v: Any) -> str:
@@ -362,6 +377,14 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
     key_map = {
         "vlm.provider": "vlm_provider",
         "vlm.model": "vlm_model",
+        "vlm.ollama_base_url": "ollama_base_url",
+        "vlm.ollama_model": "ollama_model",
+        "vlm.ollama_json_mode": "ollama_json_mode",
+        "vlm.ollama_reasoning_effort": "ollama_reasoning_effort",
+        "vlm.ollama_timeout": "ollama_timeout",
+        "vlm.ollama_image_max_edge": "ollama_image_max_edge",
+        "vlm.openai_local_base_url": "openai_local_base_url",
+        "vlm.openai_local_json_mode": "openai_local_json_mode",
         "image.provider": "image_provider",
         "image.model": "image_model",
         "image.quality": "image_quality",
@@ -385,6 +408,7 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.venue": "venue",
         "pipeline.venue_dir": "venue_dir",
         "pipeline.vector_export": "vector_export",
+        "pipeline.render_mode": "render_mode",
         "output.dir": "output_dir",
         "output.format": "output_format",
         "output.vector_export": "vector_export",

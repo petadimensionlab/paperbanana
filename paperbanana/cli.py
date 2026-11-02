@@ -105,6 +105,14 @@ venues_app = typer.Typer(
 app.add_typer(venues_app, name="venues")
 
 
+def _image_summary(settings) -> str:
+    """Human-readable image backend label for banners and dry runs."""
+    mode = getattr(settings, "render_mode", "diffusion")
+    if mode != "diffusion":
+        return f"none ({mode} -> Graphviz)"
+    return f"{settings.image_provider} / {settings.effective_image_model}"
+
+
 def _validate_venue_or_exit(venue: Optional[str], venue_dir: Optional[str] = None) -> None:
     """Validate a --venue value against built-in and user style packs."""
     from paperbanana.guidelines.venues import UnknownVenueError, validate_venue
@@ -438,6 +446,14 @@ def generate(
         "--vector-export",
         help="Export structured vector diagram (Graphviz): none, svg, pdf, both",
     ),
+    render_mode: Optional[str] = typer.Option(
+        None,
+        "--render-mode",
+        help=(
+            "Rendering backend: diffusion (image model), ir_fast (one-shot local IR), "
+            "ir_quality (IR + critic loop). Local profiles use ir_*."
+        ),
+    ),
     progress_json: bool = typer.Option(
         False,
         "--progress-json",
@@ -483,6 +499,9 @@ def generate(
     _validate_venue_or_exit(venue, venue_dir)
     if vector_export and vector_export.lower() not in ("none", "svg", "pdf", "both"):
         console.print("[red]Error: --vector-export must be none, svg, pdf, or both[/red]")
+        raise typer.Exit(1)
+    if render_mode and render_mode.lower() not in ("diffusion", "ir_fast", "ir_quality"):
+        console.print("[red]Error: --render-mode must be diffusion, ir_fast, or ir_quality[/red]")
         raise typer.Exit(1)
     if pdf_pages and (continue_last or continue_run):
         console.print(
@@ -592,6 +611,8 @@ def generate(
         overrides["venue_dir"] = venue_dir
     if vector_export is not None:
         overrides["vector_export"] = vector_export.lower()
+    if render_mode is not None:
+        overrides["render_mode"] = render_mode.lower()
     if prompt_dir:
         overrides["prompt_dir"] = prompt_dir
     if generate_caption:
@@ -800,7 +821,7 @@ def generate(
         lines = [
             "[bold]PaperBanana[/bold] - Cost Estimate\n",
             f"VLM: {settings.vlm_provider} / {settings.effective_vlm_model}",
-            f"Image: {settings.image_provider} / {settings.effective_image_model}",
+            f"Image: {_image_summary(settings)}",
             f"Iterations: {iter_est}",
             f"Optimize: {'yes' if settings.optimize_inputs else 'no'}",
         ]
@@ -834,7 +855,7 @@ def generate(
                 f"Input: {input_path}{pdf_note}\n"
                 f"Caption: {caption}\n"
                 f"VLM: {settings.vlm_provider} / {settings.effective_vlm_model}\n"
-                f"Image: {settings.image_provider} / {settings.effective_image_model}\n"
+                f"Image: {_image_summary(settings)}\n"
                 f"Iterations: {settings.refinement_iterations}\n"
                 f"Output: {expected_output}",
                 border_style="yellow",
@@ -854,7 +875,7 @@ def generate(
             Panel.fit(
                 f"[bold]PaperBanana[/bold] - Generating Methodology Diagram\n\n"
                 f"VLM: {settings.vlm_provider} / {settings.effective_vlm_model}\n"
-                f"Image: {settings.image_provider} / {settings.effective_image_model}\n"
+                f"Image: {_image_summary(settings)}\n"
                 f"Iterations: {iter_label}{candidates_label}",
                 border_style="blue",
             )
@@ -1204,7 +1225,7 @@ def regenerate_from_ir(
             Panel.fit(
                 f"[bold]PaperBanana[/bold] - Lock-aware IR Regeneration\n\n"
                 f"VLM: {settings.vlm_provider} / {settings.effective_vlm_model}\n"
-                f"Image: {settings.image_provider} / {settings.effective_image_model}\n"
+                f"Image: {_image_summary(settings)}\n"
                 f"Locked nodes/edges/groups: {lock_counts[0]}/{lock_counts[1]}/{lock_counts[2]}",
                 border_style="magenta",
             )
@@ -3675,7 +3696,7 @@ def benchmark(
             f"Split: {split_label}\n"
             f"Mode: {run_mode}\n"
             f"VLM: {settings.vlm_provider} / {settings.effective_vlm_model}\n"
-            f"Image: {settings.image_provider} / {settings.effective_image_model}",
+            f"Image: {_image_summary(settings)}",
             border_style="magenta",
         )
     )
