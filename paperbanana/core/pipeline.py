@@ -313,6 +313,8 @@ class PaperBananaPipeline:
                 plot_vlm=self._vlm_for("visualizer"),
                 theme=self.settings.render_theme,
                 background_image=self.settings.infographic_background,
+                icon_dir=self.settings.infographic_icon_dir,
+                panel_dir=self.settings.infographic_panel_dir,
                 show_edge_labels=self.settings.infographic_show_edge_labels,
             )
         else:
@@ -1033,6 +1035,8 @@ class PaperBananaPipeline:
                 ir_model,
                 run_dir / "final_output.png",
                 background_image=self.settings.infographic_background,
+                icon_dir=self.settings.infographic_icon_dir,
+                panel_dir=self.settings.infographic_panel_dir,
                 show_edge_labels=self.settings.infographic_show_edge_labels,
                 width=3200,
             )
@@ -1843,6 +1847,8 @@ class PaperBananaPipeline:
                         diagram_ir,
                         Path(final_output_path).with_suffix(".png"),
                         background_image=self.settings.infographic_background,
+                        icon_dir=self.settings.infographic_icon_dir,
+                        panel_dir=self.settings.infographic_panel_dir,
                         show_edge_labels=self.settings.infographic_show_edge_labels,
                         width=3200,
                     )

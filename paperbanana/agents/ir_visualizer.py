@@ -43,6 +43,8 @@ class IRVisualizerAgent(BaseAgent):
         plot_vlm: Optional[VLMProvider] = None,
         theme: str = "graphviz",
         background_image: Optional[str] = None,
+        icon_dir: Optional[str] = None,
+        panel_dir: Optional[str] = None,
         show_edge_labels: bool = False,
     ):
         super().__init__(vlm_provider, prompt_dir, prompt_recorder=prompt_recorder)
@@ -50,6 +52,8 @@ class IRVisualizerAgent(BaseAgent):
         self.dpi = dpi
         self.theme = theme
         self.background_image = background_image
+        self.icon_dir = icon_dir
+        self.panel_dir = panel_dir
         self.show_edge_labels = show_edge_labels
         self.structurer = StructurerAgent(
             vlm_provider, prompt_dir=prompt_dir, prompt_recorder=prompt_recorder
@@ -143,6 +147,8 @@ class IRVisualizerAgent(BaseAgent):
                 ir,
                 png_path,
                 background_image=self.background_image,
+                icon_dir=self.icon_dir,
+                panel_dir=self.panel_dir,
                 show_edge_labels=self.show_edge_labels,
                 width=max(1600, self.dpi * 16),
             )

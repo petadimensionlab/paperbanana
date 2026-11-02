@@ -34,6 +34,8 @@ run_*/
 !assets/img/hero_image.png
 !assets/sponsors/atlas_cloud_logo.png
 !assets/local/*.png
+!assets/local/icons/*.png
+!assets/local/panels/*.png
 
 # Reference set build artifacts (large, copyrighted PDFs)
 data/reference_sets/output/

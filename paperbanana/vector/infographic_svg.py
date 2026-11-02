@@ -8,8 +8,11 @@ SVG, PNG, and PDF.
 
 from __future__ import annotations
 
+import base64
+import functools
 import html
 import math
+import re
 import shutil
 import subprocess
 import textwrap
@@ -88,15 +91,57 @@ def _pretty_label(text: str) -> str:
     result = text
     for source, target in replacements.items():
         result = result.replace(source, target)
-    return result.replace("{", "").replace("}", "").strip()
+    result = result.replace("$", "")
+    result = re.sub(r"\\[a-zA-Z]+", "", result)
+    return result.replace("\\", "").replace("{", "").replace("}", "").strip()
+
+
+def _icon_key(label: str) -> str:
+    low = _pretty_label(label).lower()
+    # Order matters: more specific phrases first.
+    ordered = (
+        ("input token", "input"),
+        ("output token", "output"),
+        ("probability", "probability"),
+        ("softmax", "probability"),
+        ("database", "database"),
+        ("memory", "memory"),
+        ("attention", "attention"),
+        ("routing", "routing"),
+        ("router", "routing"),
+        ("encoder", "encoder"),
+        ("decoder", "decoder"),
+        ("feed-forward", "model"),
+        ("feed forward", "model"),
+        ("transformer", "model"),
+        ("training", "training"),
+        ("loss", "loss"),
+        ("token", "token"),
+        ("input", "input"),
+        ("output", "output"),
+    )
+    for phrase, key in ordered:
+        if phrase in low:
+            return key
+    return "model"
 
 
 def _icon_for(label: str) -> str:
+    return _ICONS.get(_icon_key(label), "M5 5h14v14H5zM8 12h8")
+
+
+def _panel_key(label: str) -> str:
     low = label.lower()
-    for key, path in _ICONS.items():
-        if key in low:
-            return path
-    return "M5 5h14v14H5zM8 12h8"
+    if "encoder" in low:
+        return "encoder"
+    if "decoder" in low:
+        return "decoder"
+    return "overview"
+
+
+@functools.lru_cache(maxsize=64)
+def _image_data_uri(path: str) -> str:
+    return "data:image/png;base64," + base64.b64encode(Path(path).read_bytes()).decode("ascii")
 
 
 def _wrap(label: str, width_chars: int, max_lines: int = 2) -> list[str]:
@@ -196,11 +241,15 @@ def _layout(ir: DiagramIR) -> tuple[list[_Panel], dict[str, _NodeBox], list[tupl
     return panels, boxes, edges
 
 
-def _node_svg(box: _NodeBox, color: tuple[str, str, str]) -> str:
+def _node_svg(
+    box: _NodeBox,
+    color: tuple[str, str, str],
+    icon_dir: Optional[str] = None,
+) -> str:
     node = box.node
     _fill, stroke, text_color = color
     show_icon = box.w >= 170
-    icon_w = 34 if show_icon else 0
+    icon_w = 44 if show_icon else 0
     text_cx = box.x + icon_w + (box.w - icon_w) / 2
     width_chars = max(8, int((box.w - icon_w - 14) / 8.4))
     lines = _wrap(_pretty_label(node.label), width_chars, max_lines=2)
@@ -212,14 +261,26 @@ def _node_svg(box: _NodeBox, color: tuple[str, str, str]) -> str:
         for i, line in enumerate(lines)
     )
     icon = _icon_for(node.label)
-    icon_x = box.x + 12
-    icon_y = box.y + box.h / 2 - 11
+    icon_x = box.x + 8
+    icon_y = box.y + box.h / 2 - 18
     icon_svg = ""
-    if show_icon:
+    icon_file = None
+    if icon_dir:
+        candidate = Path(icon_dir) / f"{_icon_key(node.label)}.png"
+        if candidate.exists():
+            icon_file = candidate
+    if show_icon and icon_file is not None:
+        icon_svg = (
+            f'<circle cx="{icon_x + 18:.1f}" cy="{box.y + box.h / 2:.1f}" r="20" '
+            f'fill="{_fill}" opacity="0.9"/>'
+            f'<image x="{icon_x:.1f}" y="{icon_y:.1f}" width="36" height="36" '
+            f'href="{_image_data_uri(str(icon_file))}" opacity="0.95"/>'
+        )
+    elif show_icon:
         icon_svg = f"""
       <g transform="translate({icon_x:.1f},{icon_y:.1f})" fill="none" stroke="{stroke}"
          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
-        <path d="{icon}" transform="scale(0.82)"/>
+        <path d="{icon}" transform="scale(1.1)"/>
       </g>"""
     return f"""
     <g class="node">
@@ -284,18 +345,37 @@ def render_infographic_svg(
     ir: DiagramIR,
     *,
     background_image: Optional[str] = None,
+    icon_dir: Optional[str] = None,
+    panel_dir: Optional[str] = None,
     show_edge_labels: bool = False,
 ) -> str:
     """Return a rich 16:9 SVG for *ir*."""
     panels, boxes, edges = _layout(ir)
     panel_svg: list[str] = []
+    clip_defs: list[str] = []
     for p_idx, panel in enumerate(panels):
         fill, stroke, text_color = PALETTE[panel.color_idx % len(PALETTE)]
+        clip_id = f"panelClip{p_idx}"
+        clip_defs.append(
+            f'<clipPath id="{clip_id}"><rect x="{panel.x:.1f}" y="{panel.y:.1f}" '
+            f'width="{panel.w:.1f}" height="{panel.h:.1f}" rx="18"/></clipPath>'
+        )
+        panel_image = ""
+        if panel_dir:
+            panel_file = Path(panel_dir) / f"{_panel_key(panel.label)}.png"
+            if panel_file.exists():
+                panel_image = (
+                    f'<image x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" '
+                    f'height="{panel.h:.1f}" preserveAspectRatio="xMidYMid slice" '
+                    f'clip-path="url(#{clip_id})" opacity="0.22" '
+                    f'href="{_image_data_uri(str(panel_file))}"/>'
+                )
         panel_svg.append(
             f"""
     <g class="panel">
       <rect x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" height="{panel.h:.1f}"
             rx="18" fill="{fill}" stroke="{stroke}" stroke-opacity="0.55" stroke-width="1.2"/>
+      {panel_image}
       <text x="{panel.x + panel.w / 2:.1f}" y="{panel.y + 23:.1f}" text-anchor="middle"
             font-family="{FONT}" font-size="17" font-weight="700" fill="{text_color}">
         {_esc(panel.label)}
@@ -303,7 +383,10 @@ def render_infographic_svg(
     </g>"""
         )
 
-    node_svg = [_node_svg(box, PALETTE[i % len(PALETTE)]) for i, box in enumerate(boxes.values())]
+    node_svg = [
+        _node_svg(box, PALETTE[i % len(PALETTE)], icon_dir=icon_dir)
+        for i, box in enumerate(boxes.values())
+    ]
     edge_svg = [
         _edge_svg(boxes[src], boxes[dst], label if show_edge_labels else "")
         for src, dst, label in edges
@@ -343,6 +426,7 @@ def render_infographic_svg(
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
       <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
     </marker>
+    {"".join(clip_defs)}
   </defs>
   <rect width="100%" height="100%" fill="url(#bg)"/>
   <rect width="100%" height="100%" fill="url(#dots)"/>
@@ -363,6 +447,8 @@ def write_infographic(
     output_path: str | Path,
     *,
     background_image: Optional[str] = None,
+    icon_dir: Optional[str] = None,
+    panel_dir: Optional[str] = None,
     show_edge_labels: bool = False,
     width: int = 3200,
 ) -> Path:
@@ -374,6 +460,8 @@ def write_infographic(
         render_infographic_svg(
             ir,
             background_image=background_image,
+            icon_dir=icon_dir,
+            panel_dir=panel_dir,
             show_edge_labels=show_edge_labels,
         ),
         encoding="utf-8",

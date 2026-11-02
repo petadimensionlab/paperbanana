@@ -95,6 +95,12 @@ class Settings(BaseSettings):
     render_mode: RenderMode = Field(default="diffusion", alias="RENDER_MODE")
     render_theme: RenderTheme = Field(default="graphviz", alias="RENDER_THEME")
     infographic_background: Optional[str] = Field(default=None, alias="INFOGRAPHIC_BACKGROUND")
+    infographic_icon_dir: Optional[str] = Field(
+        default="assets/local/icons", alias="INFOGRAPHIC_ICON_DIR"
+    )
+    infographic_panel_dir: Optional[str] = Field(
+        default="assets/local/panels", alias="INFOGRAPHIC_PANEL_DIR"
+    )
     infographic_show_edge_labels: bool = Field(default=False, alias="INFOGRAPHIC_SHOW_EDGE_LABELS")
     num_candidates: int = Field(
         default=1,
@@ -498,6 +504,8 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.render_mode": "render_mode",
         "pipeline.render_theme": "render_theme",
         "pipeline.infographic_background": "infographic_background",
+        "pipeline.infographic_icon_dir": "infographic_icon_dir",
+        "pipeline.infographic_panel_dir": "infographic_panel_dir",
         "pipeline.infographic_show_edge_labels": "infographic_show_edge_labels",
         "output.dir": "output_dir",
         "output.format": "output_format",
