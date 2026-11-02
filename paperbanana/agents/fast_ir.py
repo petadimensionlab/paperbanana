@@ -115,4 +115,10 @@ class FastIRPlannerAgent(BaseAgent):
             raise ValueError("response did not contain a JSON object")
         if not data.get("title"):
             data["title"] = caption or "Methodology Diagram"
+        nodes = data.get("nodes")
+        if isinstance(nodes, list):
+            data["nodes"] = [
+                {"id": f"n{i + 1}", "label": str(node)} if isinstance(node, str) else node
+                for i, node in enumerate(nodes)
+            ]
         return DiagramIR.model_validate(data)

@@ -68,6 +68,16 @@ class StructurerAgent(BaseAgent):
             try:
                 blob = _extract_json_blob(raw)
                 data = json.loads(blob)
+                if isinstance(data, dict):
+                    data.setdefault("title", caption or "Methodology Diagram")
+                    nodes = data.get("nodes")
+                    if isinstance(nodes, list):
+                        data["nodes"] = [
+                            {"id": f"n{i + 1}", "label": str(node)}
+                            if isinstance(node, str)
+                            else node
+                            for i, node in enumerate(nodes)
+                        ]
                 return DiagramIR.model_validate(data)
             except (json.JSONDecodeError, ValueError) as e:
                 last_err = str(e)
