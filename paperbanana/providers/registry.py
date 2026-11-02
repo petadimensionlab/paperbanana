@@ -86,7 +86,9 @@ def _validate_bedrock_auth(region: str, profile: str | None) -> None:
 class ProviderRegistry:
     """Factory for creating VLM and image generation providers from config."""
 
-    _SELF_HOSTED_PROVIDERS = frozenset({"ollama", "openai_local", "omlx", "tensorfold", "vllm"})
+    _SELF_HOSTED_PROVIDERS = frozenset(
+        {"ollama", "openai_local", "lmstudio", "omlx", "tensorfold", "vllm"}
+    )
 
     @staticmethod
     def create_vlm(settings: Settings, role: str | None = None) -> VLMProvider:
@@ -154,6 +156,11 @@ class ProviderRegistry:
                     settings.openai_vlm_model or settings.vlm_model,
                     settings.openai_local_api_key,
                 ),
+                "lmstudio": (
+                    settings.lmstudio_base_url,
+                    settings.lmstudio_model or settings.vlm_model,
+                    settings.lmstudio_api_key,
+                ),
                 "omlx": (
                     settings.omlx_base_url,
                     settings.omlx_model or settings.vlm_model,
@@ -171,12 +178,17 @@ class ProviderRegistry:
                 ),
             }
             base_url, default_model, api_key = defaults[provider]
+            json_default = (
+                settings.lmstudio_json_mode
+                if provider == "lmstudio"
+                else settings.openai_local_json_mode
+            )
             return OpenAICompatibleVLM(
                 provider_name=provider,
                 base_url=str(spec.get("base_url") or base_url),
                 model=str(spec.get("model") or default_model),
                 api_key=spec.get("api_key") or api_key,
-                json_mode=bool(spec.get("json_mode", settings.openai_local_json_mode)),
+                json_mode=bool(spec.get("json_mode", json_default)),
                 reasoning_effort=spec.get(
                     "reasoning_effort", settings.openai_local_reasoning_effort
                 ),
@@ -272,7 +284,7 @@ class ProviderRegistry:
                 image_max_edge=settings.ollama_image_max_edge,
                 image_format=settings.ollama_image_format,
             )
-        elif provider in ("openai_local", "omlx", "tensorfold", "vllm"):
+        elif provider in ("openai_local", "lmstudio", "omlx", "tensorfold", "vllm"):
             return ProviderRegistry.create_vlm_from_spec(
                 settings, {"provider": provider}, role=role
             )

@@ -14,7 +14,7 @@ logger = structlog.get_logger()
 # table lookup for these to avoid misleading "unknown pricing" warnings —
 # the model name is irrelevant because the bill is always $0.
 LOCAL_PROVIDERS: frozenset[str] = frozenset(
-    {"ollama", "openai_local", "omlx", "tensorfold", "vllm"}
+    {"ollama", "openai_local", "lmstudio", "omlx", "tensorfold", "vllm"}
 )
 
 # (provider, model_prefix) -> {"input_per_1k": USD, "output_per_1k": USD}

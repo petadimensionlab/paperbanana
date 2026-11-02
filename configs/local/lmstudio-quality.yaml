@@ -1,0 +1,94 @@
+# LM Studio + Qwen3.6-35B-A3B (the installed Qwen3.5-family 35B model).
+# LM Studio does not accept response_format=json_object; keep json_mode false
+# and rely on the prompts' JSON-only instructions. reasoning_effort=none is
+# required because the model thinks by default.
+vlm:
+  provider: routing
+  routing:
+    default:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+      image_max_edge: 1280
+    planner:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+      image_max_edge: 1280
+    critic:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+      image_max_edge: 1280
+    ir_critic:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+      image_max_edge: 1280
+    retriever:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+    stylist:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+    structurer:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+    fast_ir:
+      provider: lmstudio
+      base_url: http://127.0.0.1:1234/v1
+      model: qwen/qwen3.6-35b-a3b
+      json_mode: false
+      reasoning_effort: none
+    fallback:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:9b
+      json_mode: true
+      reasoning_effort: none
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_quality
+  render_theme: infographic
+  infographic_background: assets/local/watercolor-bg.png
+  infographic_icon_dir: assets/local/icons
+  infographic_panel_dir: assets/local/panels
+  infographic_panel_diffusion: false
+  infographic_show_edge_labels: false
+  refinement_iterations: 2
+  auto_refine: true
+  max_iterations: 2
+  num_retrieval_examples: 4
+  optimize_inputs: true
+  output_resolution: 2k
+  num_candidates: 1
+  venue: neurips
+  vector_export: both
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  export_tikz: false
+  save_iterations: true
+  save_prompts: true

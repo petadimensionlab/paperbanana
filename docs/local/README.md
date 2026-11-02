@@ -149,6 +149,7 @@ Supported self-hosted provider names:
 | Provider | Default endpoint | Notes |
 |---|---|---|
 | `ollama` | `http://127.0.0.1:11434/v1` | OpenAI-compatible `/v1` |
+| `lmstudio` | `http://127.0.0.1:1234/v1` | LM Studio server; no `json_object` mode |
 | `omlx` | `http://127.0.0.1:8000/v1` | Apple Silicon MLX server |
 | `tensorfold` | `http://127.0.0.1:8080/v1` | text-focused; use Ollama/oMLX for vision |
 | `vllm` | `http://127.0.0.1:8000/v1` | DGX Spark / CUDA |
@@ -158,8 +159,27 @@ Per-role options: `base_url`, `model`, `api_key`, `json_mode`,
 `reasoning_effort`, `timeout`, `image_max_edge`, `image_format`, `extra_body`.
 The fallback must be self-hosted; cloud providers are rejected as fallbacks.
 
+### LM Studio for IR quality
+
+LM Studio's server is OpenAI-compatible but rejects `response_format=json_object`
+(it accepts `json_schema`/`text`). Keep `json_mode: false`; the prompts already
+demand JSON-only output. Thinking must be disabled with `reasoning_effort: none`.
+
+```yaml
+vlm:
+  provider: lmstudio
+  model: qwen/qwen3.6-35b-a3b
+  lmstudio_base_url: http://127.0.0.1:1234/v1
+  lmstudio_json_mode: false
+```
+
+Use `configs/local/lmstudio-quality.yaml` to run the full IR-quality pipeline
+against the installed 35B model. On this machine the loaded model was
+`qwen/qwen3.6-35b-a3b` (Qwen3.5-family 35B), not a separate Qwen3.5 tag.
+
 Profiles:
 
+- `configs/local/lmstudio-quality.yaml` — LM Studio 35B + infographic theme.
 - `configs/local/tailnet-hybrid.yaml` — vision roles on Studio 122B, text/IR roles local, local 9B fallback.
 - `configs/local/m1ultra-remote.yaml` — M1 Ultra Studio `gemma4:12b` via Ollama, fast IR, local 9B fallback.
 - `configs/local/studio128-quality.yaml` — all roles on Studio 122B.

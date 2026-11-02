@@ -110,3 +110,14 @@ async def test_fallback_generate():
     provider = FallbackVLM(_Failing(), _Working())
     result = await provider.generate("hi")
     assert result == "fallback answer"
+
+
+def test_lmstudio_provider_alias():
+    settings = Settings(
+        vlm_provider="lmstudio",
+        lmstudio_model="qwen/qwen3.6-35b-a3b",
+    )
+    provider = ProviderRegistry.create_vlm(settings)
+    assert provider.name == "lmstudio"
+    assert provider.model_name == "qwen/qwen3.6-35b-a3b"
+    assert provider.supports_json_mode is False

@@ -187,6 +187,10 @@ class Settings(BaseSettings):
     openai_local_extra_body: Optional[dict[str, Any]] = Field(
         default=None, alias="OPENAI_LOCAL_EXTRA_BODY"
     )
+    lmstudio_base_url: str = Field(default="http://localhost:1234/v1", alias="LMSTUDIO_BASE_URL")
+    lmstudio_model: Optional[str] = Field(default=None, alias="LMSTUDIO_MODEL")
+    lmstudio_api_key: Optional[str] = Field(default=None, alias="LMSTUDIO_API_KEY")
+    lmstudio_json_mode: bool = Field(default=False, alias="LMSTUDIO_JSON_MODE")
     omlx_base_url: str = Field(default="http://localhost:8000/v1", alias="OMLX_BASE_URL")
     omlx_model: Optional[str] = Field(default=None, alias="OMLX_MODEL")
     omlx_api_key: Optional[str] = Field(default=None, alias="OMLX_API_KEY")
@@ -473,6 +477,10 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "vlm.openai_local_timeout": "openai_local_timeout",
         "vlm.openai_local_image_max_edge": "openai_local_image_max_edge",
         "vlm.openai_local_extra_body": "openai_local_extra_body",
+        "vlm.lmstudio_base_url": "lmstudio_base_url",
+        "vlm.lmstudio_model": "lmstudio_model",
+        "vlm.lmstudio_api_key": "lmstudio_api_key",
+        "vlm.lmstudio_json_mode": "lmstudio_json_mode",
         "vlm.omlx_base_url": "omlx_base_url",
         "vlm.omlx_model": "omlx_model",
         "vlm.omlx_api_key": "omlx_api_key",

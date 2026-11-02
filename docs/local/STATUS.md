@@ -37,6 +37,7 @@ This file is the resume point. Read it first after an interrupted session.
 | 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
 | 5. Fork/public release | DONE | public fork + CI green + `v0.3.0+petadim.1` GitHub release |
 | 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, dynamic panel illustrations |
+| 6b. IR quality via LM Studio | DONE | `lmstudio` provider + Qwen3.6-35B-A3B profile; 13-node/5-group IR |
 | 7. Benchmarks / img2img | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark; optional ControlNet/img2img |
 
 ## Verified locally
@@ -71,13 +72,13 @@ This file is the resume point. Read it first after an interrupted session.
 
 ## Next step
 
-Phase 7: benchmarks and richer hybrid output.
+Phase 7: benchmarks and img2img/ControlNet.
 
 1. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
 2. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
-3. Add `paperbanana local doctor` and `local render` as the next CLI milestone.
-4. Optional: img2img / ControlNet over the infographic render, keeping the SVG
-   text overlay exact; or generate group-level illustrations.
+3. Implement img2img/ControlNet over the infographic structure, keeping the
+   SVG text overlay exact.
+4. Add `paperbanana local doctor` and `local render` CLI.
 
 Release: https://github.com/petadimensionlab/paperbanana/releases/tag/v0.3.0%2Bpetadim.1
 
