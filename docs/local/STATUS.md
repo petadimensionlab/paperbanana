@@ -35,7 +35,7 @@ This file is the resume point. Read it first after an interrupted session.
 | 3. Quality IR critic | DONE | `ir_quality` uses `IRCriticAgent` + `revised_ir` |
 | 3b. TikZ from IR | DONE | `dot -Tplain` -> standalone TikZ, `pdflatex` verified |
 | 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
-| 5. Fork/public release | DONE | public fork created; CI green; GitHub release pending tag |
+| 5. Fork/public release | DONE | public fork + CI green + `v0.3.0+petadim.1` GitHub release |
 | 6. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
 
 ## Verified locally
@@ -70,13 +70,13 @@ This file is the resume point. Read it first after an interrupted session.
 
 ## Next step
 
-Phase 6: benchmarks and the first GitHub release.
+Phase 6: benchmarks.
 
-1. Tag `v0.3.0+petadim.1` after the docs commit; the release workflow builds
-   wheel/sdist and attaches them to a GitHub release (no PyPI).
-2. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
-3. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
-4. Add `paperbanana local doctor` and `local render` as the next CLI milestone.
+1. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
+2. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
+3. Add `paperbanana local doctor` and `local render` as the next CLI milestone.
+
+Release: https://github.com/petadimensionlab/paperbanana/releases/tag/v0.3.0%2Bpetadim.1
 
 ## Resume in a new OpenCode session
 
