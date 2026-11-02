@@ -3,9 +3,10 @@
 This file is the resume point. Read it first after an interrupted session.
 
 - Repository: `petadimensionlab/paperbanana` (public fork; repo name unchanged)
-- Branch: `local` (upstream `origin/main` is at `87e01fd`, v0.3.0 + 2 commits)
+- Fork URL: https://github.com/petadimensionlab/paperbanana
+- Branch: `local` (default branch; upstream is `upstream/main` at `87e01fd`)
 - Last updated: 2026-11-02
-- Checkpoint commit: `2938f2f` (Phase 2 + 3); previous: `d5e3ff4` (Phase 1)
+- Checkpoints: `d5e3ff4` (Phase 1), `2938f2f` (Phase 2+3), `38b0b6d` (Phase 4), `6b9a563` (Phase 5 CI/release)
 - Scope: fully offline / local-only operation, label-accurate vector diagrams
 - Non-goal: diffusion image generation in the speed/quality profiles
 
@@ -34,7 +35,7 @@ This file is the resume point. Read it first after an interrupted session.
 | 3. Quality IR critic | DONE | `ir_quality` uses `IRCriticAgent` + `revised_ir` |
 | 3b. TikZ from IR | DONE | `dot -Tplain` -> standalone TikZ, `pdflatex` verified |
 | 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
-| 5. Fork/public release | IN PROGRESS | metadata updated; fork/CI/release pending |
+| 5. Fork/public release | DONE | public fork created; CI green; GitHub release pending tag |
 | 6. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
 
 ## Verified locally
@@ -69,13 +70,13 @@ This file is the resume point. Read it first after an interrupted session.
 
 ## Next step
 
-Phase 5: finish the public fork.
+Phase 6: benchmarks and the first GitHub release.
 
-1. Create `petadimensionlab/paperbanana` with `gh repo fork --clone=false`.
-2. Rename `origin` to `upstream`, add the fork as `origin`, push `main` and `local`.
-3. Add/verify CI on Ubuntu + macOS (Graphviz installed), no PyPI publish.
-4. Tag `v0.3.0+petadim.1` and attach wheel/sdist to a GitHub release.
-5. Run the release checklist in `docs/local/STATUS.md` before making it public.
+1. Tag `v0.3.0+petadim.1` after the docs commit; the release workflow builds
+   wheel/sdist and attaches them to a GitHub release (no PyPI).
+2. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
+3. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
+4. Add `paperbanana local doctor` and `local render` as the next CLI milestone.
 
 ## Resume in a new OpenCode session
 
