@@ -27,6 +27,8 @@ Rules for "revised_ir":
 3. Every edge must reference an existing node ID. Do not invent modules.
 4. Keep the graph connected and readable (4-16 nodes).
 5. If the diagram is already correct, return "revised_ir": null.
+6. Do not keep a container node and its internal components at the same level. If the members are present, represent the container only as a group; otherwise use the container node alone.
+7. Add the missing internal edges in their true order (attention → router → FFN, etc.).
 
 Figure caption:
 {caption}

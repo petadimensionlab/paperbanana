@@ -11,6 +11,7 @@ import structlog
 from paperbanana.agents.base import BaseAgent
 from paperbanana.agents.structurer import StructurerAgent
 from paperbanana.agents.visualizer import VisualizerAgent
+from paperbanana.core.diagram_ir import flatten_container_nodes
 from paperbanana.core.types import DiagramIR, DiagramType
 from paperbanana.core.utils import ensure_dir, save_json
 from paperbanana.providers.base import ImageGenProvider, VLMProvider
@@ -142,6 +143,7 @@ class IRVisualizerAgent(BaseAgent):
                 source_context=self._source_context,
                 caption=self._caption,
             )
+        ir = flatten_container_nodes(ir)
         self._last_ir = ir
 
         iter_dir = ensure_dir(self.output_dir / f"iter_{iteration}")

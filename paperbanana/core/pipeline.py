@@ -835,6 +835,68 @@ class PaperBananaPipeline:
                 budget_exceeded = True
                 break
 
+        # A critic on the final allowed iteration may return a corrected IR
+        # that never got rendered. Render it once, deterministically (no VLM),
+        # so the final artifacts reflect the last review.
+        pending_ir = getattr(visualizer, "_pending_ir", None)
+        if (
+            self.settings.render_mode == "ir_quality"
+            and pending_ir is not None
+            and not budget_exceeded
+        ):
+            finalize_index = (iterations[-1].iteration + 1) if iterations else 1
+            finalize_start = time.perf_counter()
+            try:
+                image_path, _ = await self._visualize_with_rollback(
+                    iteration=finalize_index,
+                    rollback_to=iterations[-1].iteration if iterations else None,
+                    run_dir=run_dir,
+                    visualizer=visualizer,
+                    description=current_description,
+                    diagram_type=input.diagram_type,
+                    raw_data=input.raw_data,
+                    seed=seed,
+                    aspect_ratio=effective_ratio,
+                    vector_formats=vector_formats,
+                    sketch_guided=bool(input.input_images),
+                )
+                finalize_seconds = time.perf_counter() - finalize_start
+                if image_path:
+                    critique = CritiqueResult()
+                    iterations.append(
+                        IterationRecord(
+                            iteration=finalize_index,
+                            description=current_description,
+                            image_path=image_path,
+                            critique=critique,
+                        )
+                    )
+                    iteration_timings.append(
+                        {
+                            "iteration": finalize_index,
+                            "visualizer_seconds": finalize_seconds,
+                            "critic_seconds": 0.0,
+                            "deterministic_finalize": True,
+                        }
+                    )
+                    if self.settings.save_iterations:
+                        iter_dir = ensure_dir(run_dir / f"iter_{finalize_index}")
+                        save_json(
+                            {
+                                "description": current_description,
+                                "critique": critique.model_dump(),
+                                "deterministic_finalize": True,
+                            },
+                            iter_dir / "details.json",
+                        )
+                    logger.info(
+                        "Rendered final IR revision",
+                        iteration=finalize_index,
+                        seconds=round(finalize_seconds, 1),
+                    )
+            except Exception:
+                logger.warning("Final IR revision render failed", exc_info=True)
+
         return {
             "iterations": iterations,
             "iteration_timings": iteration_timings,

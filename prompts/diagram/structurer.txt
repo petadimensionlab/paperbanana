@@ -27,5 +27,8 @@ Output **only** a single JSON object matching this schema (no markdown, no comme
 2. Use **clear English** labels; no empty strings.
 3. Edges must only reference `id`s defined in `nodes`.
 4. Prefer a **connected** flow when the description implies a pipeline.
+5. Do not mix abstraction levels: if a stack/block is represented as a group with its internal components, do not also create a separate node for the stack itself. Either model it as one node or as a group, never both.
+6. Put every node in at most one group, and prefer grouping all nodes. Do not draw a direct edge from a container to one of its own children when the group already expresses containment.
+7. Connect internal components in their actual order (for example attention → router → FFN inside an encoder block), not only the container nodes.
 
 Return valid JSON only.

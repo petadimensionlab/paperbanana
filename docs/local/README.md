@@ -177,6 +177,11 @@ Use `configs/local/lmstudio-quality.yaml` to run the full IR-quality pipeline
 against the installed 35B model. On this machine the loaded model was
 `qwen/qwen3.6-35b-a3b` (Qwen3.5-family 35B), not a separate Qwen3.5 tag.
 
+The IR visualizer flattens duplicate container nodes (for example an
+`Encoder Stack` node inside an `Encoder Block` group) and reconnects the flow
+to the internal components. The final critic revision is rendered once more
+deterministically after the last iteration, so the last review is not lost.
+
 Profiles:
 
 - `configs/local/lmstudio-quality.yaml` — LM Studio 35B + infographic theme.

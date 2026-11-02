@@ -186,6 +186,26 @@ def _build_panels(ir: DiagramIR) -> list[_Panel]:
             panels.append(_Panel(group.label or group.id, members, idx))
             grouped_ids.update(n.id for n in members)
     ungrouped = [n for n in ir.nodes if n.id not in grouped_ids]
+    if ungrouped and panels:
+        # Attach an ungrouped input/output node to the group it feeds or
+        # receives from, so a one-node "Overview" panel is avoided.
+        node_to_panel = {n.id: p_idx for p_idx, panel in enumerate(panels) for n in panel.nodes}
+        remaining: list[DiagramIRNode] = []
+        for node in ungrouped:
+            neighbours = [e.target for e in ir.edges if e.source == node.id] + [
+                e.source for e in ir.edges if e.target == node.id
+            ]
+            attached = False
+            for neighbour in neighbours:
+                p_idx = node_to_panel.get(neighbour)
+                if p_idx is not None:
+                    panels[p_idx].nodes.insert(0, node)
+                    node_to_panel[node.id] = p_idx
+                    attached = True
+                    break
+            if not attached:
+                remaining.append(node)
+        ungrouped = remaining
     if ungrouped:
         # Put ungrouped nodes in a leading "Overview" panel.
         panels.insert(0, _Panel("Overview", ungrouped, len(panels)))

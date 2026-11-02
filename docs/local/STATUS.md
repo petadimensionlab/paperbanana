@@ -37,7 +37,8 @@ This file is the resume point. Read it first after an interrupted session.
 | 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
 | 5. Fork/public release | DONE | public fork + CI green + `v0.3.0+petadim.1` GitHub release |
 | 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, dynamic panel illustrations |
-| 6b. IR quality via LM Studio | DONE | `lmstudio` provider + Qwen3.6-35B-A3B profile; 13-node/5-group IR |
+| 6b. IR quality via LM Studio | DONE | `lmstudio` provider + Qwen3.6-35B-A3B; latest run 18 nodes / 17 edges / 4 groups, no cycles |
+| 6c. Container normalization | DONE | flatten duplicate Encoder/Decoder container nodes and apply final critic IR |
 | 7. Benchmarks / img2img | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark; optional ControlNet/img2img |
 
 ## Verified locally
@@ -53,6 +54,12 @@ This file is the resume point. Read it first after an interrupted session.
 - TikZ export from IR compiles with `pdflatex` after `tlmgr install pgf standalone`.
   A sample 11-node figure produced a 29KB PDF with exact labels.
 - `tlmgr` on this Mac needed `tlmgr update --self` before installing `pgf`/`standalone`.
+- LM Studio Qwen3.6-35B-A3B (the installed 35B) improves IR substantially:
+  latest run has 18 nodes / 17 edges / 4 groups and no graph cycles.
+- `flatten_container_nodes` removes duplicate `Encoder Stack` / `Decoder Stack`
+  nodes when the group already contains the internal components.
+- The final IR Critic revision is rendered deterministically after the last
+  iteration, so the last review is reflected in the output.
 
 ## Known gaps
 

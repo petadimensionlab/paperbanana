@@ -425,3 +425,73 @@ def save_raster_wrapped_svg(image_path: str | Path, output_path: str | Path) -> 
     )
     output_path.write_text(content, encoding="utf-8")
     return output_path
+
+
+def flatten_container_nodes(diagram_ir: DiagramIR) -> DiagramIR:
+    """Remove container nodes that duplicate their group.
+
+    Local VLMs often emit both a group (``Encoder Block``) and a node for the
+    same container (``Encoder Stack``).  That creates a misleading direct edge
+    from the container to its own children.  When a group member shares a
+    container keyword with the group and has exactly one internal outgoing
+    edge, remove the member and reconnect the flow to the first/last internal
+    component.
+    """
+    import re
+
+    container_words = {"encoder", "decoder", "module", "block", "stack"}
+    nodes = list(diagram_ir.nodes)
+    edges = [e.model_copy() for e in diagram_ir.edges]
+    groups = [g.model_copy(deep=True) for g in diagram_ir.groups]
+    removed: set[str] = set()
+
+    for group in groups:
+        member_ids = [nid for nid in group.node_ids if nid not in removed]
+        if len(member_ids) < 2:
+            continue
+        group_tokens = set(re.findall(r"[a-z0-9]+", group.label.lower()))
+        for cand in [n for n in nodes if n.id in member_ids]:
+            cand_tokens = set(re.findall(r"[a-z0-9]+", cand.label.lower()))
+            if not (cand_tokens & group_tokens & container_words):
+                continue
+            internal_outs = [e for e in edges if e.source == cand.id and e.target in member_ids]
+            if len(internal_outs) != 1:
+                continue
+            first = internal_outs[0].target
+            # Follow the internal chain to its last component.
+            last = first
+            seen = {first}
+            while True:
+                nxt = [
+                    e.target
+                    for e in edges
+                    if e.source == last
+                    and e.target in member_ids
+                    and e.target not in seen
+                    and e.target != cand.id
+                ]
+                if not nxt:
+                    break
+                last = nxt[0]
+                seen.add(last)
+
+            for edge in edges:
+                if edge.target == cand.id:
+                    edge.target = first
+                elif edge.source == cand.id and edge.target not in member_ids:
+                    edge.source = last
+            edges = [e for e in edges if not (e.source == cand.id and e.target in member_ids)]
+            removed.add(cand.id)
+            group.node_ids = [nid for nid in group.node_ids if nid != cand.id]
+
+    nodes = [n for n in nodes if n.id not in removed]
+    # Drop duplicate edges created by rewiring.
+    deduped: list[DiagramIREdge] = []
+    seen_edges: set[tuple[str, str, str]] = set()
+    for edge in edges:
+        key = (edge.source, edge.target, edge.label or "")
+        if key not in seen_edges:
+            seen_edges.add(key)
+            deduped.append(edge)
+
+    return diagram_ir.model_copy(update={"nodes": nodes, "edges": deduped, "groups": groups})

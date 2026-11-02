@@ -16,6 +16,8 @@ Rules:
 4. Every edge must reference node IDs that exist in "nodes". Prefer a connected flow.
 5. Use 2-4 groups only when the source has clear phases or subsystems.
 6. IDs must be stable, unique, and ASCII (for example: n1, n2, encoder, decoder).
+7. Do not mix abstraction levels: if a stack/block is a group with internal components, do not also create a node for the stack itself.
+8. Connect internal components in their actual order; do not draw a direct edge from a container to its own child.
 
 Methodology section:
 {source_context}
