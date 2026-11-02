@@ -5,6 +5,7 @@ This file is the resume point. Read it first after an interrupted session.
 - Repository: `petadimensionlab/paperbanana` (public fork; repo name unchanged)
 - Branch: `local` (upstream `origin/main` is at `87e01fd`, v0.3.0 + 2 commits)
 - Last updated: 2026-11-02
+- Checkpoint commit: `2938f2f` (Phase 2 + 3); previous: `d5e3ff4` (Phase 1)
 - Scope: fully offline / local-only operation, label-accurate vector diagrams
 - Non-goal: diffusion image generation in the speed/quality profiles
 
