@@ -56,6 +56,7 @@ from paperbanana.core.utils import (
 from paperbanana.guidelines.methodology import load_methodology_guidelines
 from paperbanana.guidelines.plots import load_plot_guidelines
 from paperbanana.guidelines.venues import VenuePack, resolve_venue, select_aspect_ratio
+from paperbanana.providers.base import VLMProvider
 from paperbanana.providers.registry import ProviderRegistry
 from paperbanana.reference.exemplar_retrieval import (
     ExemplarRetrievalError,
@@ -199,9 +200,11 @@ class PaperBananaPipeline:
             self._prompt_recorder = PromptRecorder(run_dir_provider=lambda: self._run_dir)
 
         # Initialize providers
+        self._vlm_cache: dict[str, VLMProvider] = {}
         if vlm_client is not None:
             # Demo mode: use provided clients
             self._vlm = vlm_client
+            self._vlm_cache["default"] = vlm_client
             self._image_gen = image_gen_fn
             self._demo_mode = True
         else:
@@ -263,43 +266,56 @@ class PaperBananaPipeline:
         prompt_dir = self._find_prompt_dir()
         self._prompt_dir = prompt_dir
         self.optimizer = InputOptimizerAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("optimizer"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         self.retriever = RetrieverAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("retriever"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         if self.settings.render_mode == "ir_fast":
             self.planner = FastIRPlannerAgent(
-                self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+                self._vlm_for("fast_ir"),
+                prompt_dir=prompt_dir,
+                prompt_recorder=self._prompt_recorder,
             )
         else:
             self.planner = PlannerAgent(
-                self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+                self._vlm_for("planner"),
+                prompt_dir=prompt_dir,
+                prompt_recorder=self._prompt_recorder,
             )
         self.ir_planner = IRPlannerAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("ir_planner"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         self.stylist = StylistAgent(
-            self._vlm,
+            self._vlm_for("stylist"),
             guidelines=self._methodology_guidelines,
             prompt_dir=prompt_dir,
             prompt_recorder=self._prompt_recorder,
         )
         self.structurer = StructurerAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("structurer"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         if self.settings.render_mode != "diffusion":
             self.visualizer = IRVisualizerAgent(
-                self._vlm,
+                self._vlm_for("structurer"),
                 prompt_dir=prompt_dir,
                 output_dir=str(self._run_dir),
                 prompt_recorder=self._prompt_recorder,
                 image_gen=self._image_gen,
+                plot_vlm=self._vlm_for("visualizer"),
             )
         else:
             self.visualizer = VisualizerAgent(
                 self._image_gen,
-                self._vlm,
+                self._vlm_for("visualizer"),
                 prompt_dir=prompt_dir,
                 output_dir=str(self._run_dir),
                 prompt_recorder=self._prompt_recorder,
@@ -307,16 +323,24 @@ class PaperBananaPipeline:
                 image_quality=self.settings.image_quality,
             )
         self.critic = CriticAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("critic"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         self.ir_critic = IRCriticAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("ir_critic"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         self.caption_agent = CaptionAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("caption"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         self.tikz_exporter = TikZExporterAgent(
-            self._vlm, prompt_dir=prompt_dir, prompt_recorder=self._prompt_recorder
+            self._vlm_for("tikz_exporter"),
+            prompt_dir=prompt_dir,
+            prompt_recorder=self._prompt_recorder,
         )
         self._sync_run_scoped_agents()
 
@@ -365,6 +389,18 @@ class PaperBananaPipeline:
         if self.settings.prompt_dir:
             return self.settings.prompt_dir
         return find_prompt_dir()
+
+    def _vlm_for(self, role: str) -> VLMProvider:
+        """Return the VLM assigned to *role* (routing-aware, cached)."""
+        if role in self._vlm_cache:
+            return self._vlm_cache[role]
+        if self._demo_mode or not self.settings.vlm_routing:
+            return self._vlm
+        provider = ProviderRegistry.create_vlm(self.settings, role=role)
+        if self._cost_tracker is not None and hasattr(provider, "cost_tracker"):
+            provider.cost_tracker = self._cost_tracker
+        self._vlm_cache[role] = provider
+        return provider
 
     def _sync_run_scoped_agents(self) -> None:
         self.visualizer.set_output_dir(self._run_dir)
@@ -659,9 +695,10 @@ class PaperBananaPipeline:
             if self.settings.render_mode == "ir_fast":
                 # Speed mode: one deterministic IR render, no VLM critic call.
                 critique = CritiqueResult()
-            elif self.settings.render_mode == "ir_quality" and getattr(
-                self.visualizer, "last_ir", None
-            ) is not None:
+            elif (
+                self.settings.render_mode == "ir_quality"
+                and getattr(self.visualizer, "last_ir", None) is not None
+            ):
                 try:
                     ir_review = await _call_with_retry(
                         "ir_critic",
@@ -1449,9 +1486,7 @@ class PaperBananaPipeline:
         # ── Phase 1: Linear Planning ─────────────────────────────────
 
         if isinstance(self.visualizer, IRVisualizerAgent):
-            self.visualizer.set_context(
-                input.source_context, input.communicative_intent
-            )
+            self.visualizer.set_context(input.source_context, input.communicative_intent)
 
         # Step 1: Retriever — find relevant examples (timer includes external call when enabled)
         logger.info("Phase 1: Retrieval")

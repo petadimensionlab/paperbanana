@@ -70,6 +70,49 @@ pdflatex final_output.tex
 - `ir_fast` — one VLM call -> IR -> Graphviz; no critic; 1 iteration
 - `ir_quality` — full planning -> IR -> critic loop -> Graphviz
 
+## Routing between local/self-hosted providers
+
+`vlm.provider: routing` selects a provider per agent role. This is useful when
+one machine has the big vision model and another has a fast text model.
+
+```yaml
+vlm:
+  provider: routing
+  routing:
+    default:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: pb-quality
+    structurer:
+      provider: tensorfold
+      base_url: http://100.127.45.60:8080/v1
+      model: qwen3.6-35b-a3b
+    fallback:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:9b
+```
+
+Supported self-hosted provider names:
+
+| Provider | Default endpoint | Notes |
+|---|---|---|
+| `ollama` | `http://127.0.0.1:11434/v1` | OpenAI-compatible `/v1` |
+| `omlx` | `http://127.0.0.1:8000/v1` | Apple Silicon MLX server |
+| `tensorfold` | `http://127.0.0.1:8080/v1` | text-focused; use Ollama/oMLX for vision |
+| `vllm` | `http://127.0.0.1:8000/v1` | DGX Spark / CUDA |
+| `openai_local` | `http://127.0.0.1:8000/v1` | any OpenAI-compatible server |
+
+Per-role options: `base_url`, `model`, `api_key`, `json_mode`,
+`reasoning_effort`, `timeout`, `image_max_edge`, `image_format`, `extra_body`.
+The fallback must be self-hosted; cloud providers are rejected as fallbacks.
+
+Profiles:
+
+- `configs/local/tailnet-hybrid.yaml` — vision roles on Studio 122B, text/IR roles local, local 9B fallback.
+- `configs/local/studio128-quality.yaml` — all roles on Studio 122B.
+- `configs/local/spark-vllm.yaml` — DGX Spark vLLM endpoint.
+
 ## Ollama notes
 
 - Set `OLLAMA_CONTEXT_LENGTH` (32K for 64GB Mac mini, 64K for 128GB) or create a

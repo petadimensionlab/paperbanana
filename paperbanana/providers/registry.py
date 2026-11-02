@@ -86,11 +86,127 @@ def _validate_bedrock_auth(region: str, profile: str | None) -> None:
 class ProviderRegistry:
     """Factory for creating VLM and image generation providers from config."""
 
+    _SELF_HOSTED_PROVIDERS = frozenset({"ollama", "openai_local", "omlx", "tensorfold", "vllm"})
+
     @staticmethod
-    def create_vlm(settings: Settings) -> VLMProvider:
-        """Create a VLM provider based on settings."""
+    def create_vlm(settings: Settings, role: str | None = None) -> VLMProvider:
+        """Create a VLM provider, honoring per-role routing when configured."""
+        routing = settings.vlm_routing or {}
+        if routing:
+            spec = routing.get(role or "default") or routing.get("default")
+            if spec:
+                primary = ProviderRegistry.create_vlm_from_spec(settings, spec, role=role)
+                fallback_spec = routing.get("fallback")
+                if fallback_spec and fallback_spec is not spec:
+                    fallback_provider = str(fallback_spec.get("provider", "ollama")).lower()
+                    if fallback_provider not in ProviderRegistry._SELF_HOSTED_PROVIDERS:
+                        raise ValueError(
+                            "VLM fallback must be a self-hosted provider "
+                            f"({sorted(ProviderRegistry._SELF_HOSTED_PROVIDERS)}); "
+                            f"got {fallback_provider}"
+                        )
+                    from paperbanana.providers.vlm.routing import FallbackVLM
+
+                    fallback = ProviderRegistry.create_vlm_from_spec(
+                        settings, fallback_spec, role=role
+                    )
+                    logger.info(
+                        "VLM routing with fallback",
+                        role=role or "default",
+                        primary=primary.name,
+                        primary_model=primary.model_name,
+                        fallback=fallback.name,
+                        fallback_model=fallback.model_name,
+                    )
+                    return FallbackVLM(primary, fallback)
+                return primary
+        return ProviderRegistry._create_vlm_default(settings, role=role)
+
+    @staticmethod
+    def create_vlm_from_spec(
+        settings: Settings, spec: dict, role: str | None = None
+    ) -> VLMProvider:
+        """Create one provider from a routing spec."""
+        provider = str(spec.get("provider", settings.vlm_provider)).lower()
+        model = str(spec.get("model") or settings.vlm_model)
+
+        if provider == "ollama":
+            from paperbanana.providers.vlm.ollama import OllamaVLM
+
+            return OllamaVLM(
+                model=str(spec.get("model") or settings.ollama_model or settings.vlm_model),
+                base_url=str(spec.get("base_url") or settings.ollama_base_url),
+                json_mode=bool(spec.get("json_mode", settings.ollama_json_mode)),
+                reasoning_effort=spec.get("reasoning_effort", settings.ollama_reasoning_effort),
+                request_timeout=float(spec.get("timeout", settings.ollama_timeout)),
+                image_max_edge=int(spec.get("image_max_edge", settings.ollama_image_max_edge)),
+                image_format=str(spec.get("image_format", settings.ollama_image_format)),
+            )
+
+        if provider in ProviderRegistry._SELF_HOSTED_PROVIDERS:
+            from paperbanana.providers.vlm.openai_compatible import (
+                OpenAICompatibleVLM,
+            )
+
+            defaults = {
+                "openai_local": (
+                    settings.openai_local_base_url,
+                    settings.openai_vlm_model or settings.vlm_model,
+                    settings.openai_local_api_key,
+                ),
+                "omlx": (
+                    settings.omlx_base_url,
+                    settings.omlx_model or settings.vlm_model,
+                    settings.omlx_api_key,
+                ),
+                "tensorfold": (
+                    settings.tensorfold_base_url,
+                    settings.tensorfold_model or settings.vlm_model,
+                    None,
+                ),
+                "vllm": (
+                    settings.vllm_base_url,
+                    settings.vllm_model or settings.vlm_model,
+                    settings.vllm_api_key,
+                ),
+            }
+            base_url, default_model, api_key = defaults[provider]
+            return OpenAICompatibleVLM(
+                provider_name=provider,
+                base_url=str(spec.get("base_url") or base_url),
+                model=str(spec.get("model") or default_model),
+                api_key=spec.get("api_key") or api_key,
+                json_mode=bool(spec.get("json_mode", settings.openai_local_json_mode)),
+                reasoning_effort=spec.get(
+                    "reasoning_effort", settings.openai_local_reasoning_effort
+                ),
+                request_timeout=float(spec.get("timeout", settings.openai_local_timeout)),
+                image_max_edge=int(
+                    spec.get("image_max_edge", settings.openai_local_image_max_edge)
+                ),
+                image_format=str(spec.get("image_format", settings.openai_local_image_format)),
+                extra_body=spec.get("extra_body") or settings.openai_local_extra_body,
+            )
+
+        # Cloud/other providers: reuse the default factory with overrides.
+        overrides = {"vlm_provider": provider, "vlm_model": model}
+        return ProviderRegistry._create_vlm_default(
+            settings.model_copy(update=overrides), role=role
+        )
+
+    @staticmethod
+    def _create_vlm_default(settings: Settings, role: str | None = None) -> VLMProvider:
+        """Create a VLM provider from top-level settings."""
         provider = settings.vlm_provider.lower()
-        logger.info("Creating VLM provider", provider=provider, model=settings.effective_vlm_model)
+        logger.info(
+            "Creating VLM provider",
+            provider=provider,
+            model=settings.effective_vlm_model,
+            role=role,
+        )
+
+        if provider == "routing":
+            raise ValueError("vlm_provider=routing requires vlm.routing.default (or a role entry)")
 
         if provider == "gemini":
             _validate_api_key(settings.google_api_key, "GOOGLE_API_KEY")
@@ -156,15 +272,9 @@ class ProviderRegistry:
                 image_max_edge=settings.ollama_image_max_edge,
                 image_format=settings.ollama_image_format,
             )
-        elif provider == "openai_local":
-            from paperbanana.providers.vlm.openai import OpenAIVLM
-
-            return OpenAIVLM(
-                api_key=settings.openai_api_key or "not-needed",
-                model=settings.openai_vlm_model or settings.vlm_model,
-                base_url=settings.openai_local_base_url,
-                json_mode=settings.openai_local_json_mode,
-                provider_name="openai_local",
+        elif provider in ("openai_local", "omlx", "tensorfold", "vllm"):
+            return ProviderRegistry.create_vlm_from_spec(
+                settings, {"provider": provider}, role=role
             )
         elif provider == "claude_code":
             from paperbanana.providers.vlm.claude_code import ClaudeCodeVLM

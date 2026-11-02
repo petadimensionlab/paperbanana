@@ -70,9 +70,7 @@ async def test_ir_fast_renders_without_image_gen_or_critic(tmp_path: Path):
         export_tikz=True,
         refinement_iterations=1,
     )
-    pipeline = PaperBananaPipeline(
-        settings=settings, vlm_client=vlm, image_gen_fn=DummyImageGen()
-    )
+    pipeline = PaperBananaPipeline(settings=settings, vlm_client=vlm, image_gen_fn=DummyImageGen())
 
     result = await pipeline.generate(
         GenerationInput(
@@ -110,9 +108,7 @@ async def test_ir_quality_uses_structurer_and_critic(tmp_path: Path):
         save_iterations=True,
         refinement_iterations=1,
     )
-    pipeline = PaperBananaPipeline(
-        settings=settings, vlm_client=vlm, image_gen_fn=DummyImageGen()
-    )
+    pipeline = PaperBananaPipeline(settings=settings, vlm_client=vlm, image_gen_fn=DummyImageGen())
 
     result = await pipeline.generate(
         GenerationInput(
@@ -127,3 +123,26 @@ async def test_ir_quality_uses_structurer_and_critic(tmp_path: Path):
     assert (run_dir / "diagram_ir.json").exists()
     # Quality mode uses Retriever + Planner + Stylist + Structurer + Critic.
     assert vlm.calls >= 4
+
+
+def test_pipeline_exposes_routed_providers(tmp_path: Path):
+    settings = Settings(
+        vlm_provider="routing",
+        vlm_routing={
+            "default": {"provider": "ollama", "model": "qwen3.5:9b"},
+            "structurer": {
+                "provider": "tensorfold",
+                "base_url": "http://127.0.0.1:8080/v1",
+                "model": "qwen3.6-35b-a3b",
+            },
+        },
+        render_mode="ir_fast",
+        image_provider="none",
+        output_dir=str(tmp_path),
+        save_prompts=False,
+        save_iterations=False,
+    )
+    pipeline = PaperBananaPipeline(settings=settings, vlm_client=None)
+    assert pipeline._vlm_for("planner").name == "ollama"
+    assert pipeline._vlm_for("structurer").name == "tensorfold"
+    assert pipeline._vlm_for("structurer").model_name == "qwen3.6-35b-a3b"

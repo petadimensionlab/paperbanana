@@ -1,0 +1,83 @@
+# Tailnet hybrid routing: vision-heavy roles use shinjimac-studio (122B),
+# text/IR roles stay local, and every role falls back to a local 9B.
+# Prerequisites on shinjimac-studio: pb-quality alias (Qwen3.5-122B-A10B, 32K).
+vlm:
+  provider: routing
+  routing:
+    default:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: pb-quality
+      json_mode: true
+      reasoning_effort: none
+    planner:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: pb-quality
+      json_mode: true
+      reasoning_effort: none
+    critic:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: pb-quality
+      json_mode: true
+      reasoning_effort: none
+    ir_critic:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: pb-quality
+      json_mode: true
+      reasoning_effort: none
+    retriever:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:35b-a3b
+      json_mode: true
+      reasoning_effort: none
+    stylist:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:35b-a3b
+      json_mode: true
+      reasoning_effort: none
+    structurer:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:35b-a3b
+      json_mode: true
+      reasoning_effort: none
+    fast_ir:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:9b
+      json_mode: true
+      reasoning_effort: none
+    fallback:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:9b
+      json_mode: true
+      reasoning_effort: none
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_quality
+  refinement_iterations: 3
+  auto_refine: true
+  max_iterations: 3
+  num_retrieval_examples: 6
+  optimize_inputs: true
+  output_resolution: 2k
+  num_candidates: 1
+  venue: neurips
+  vector_export: both
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  export_tikz: true
+  save_iterations: true
+  save_prompts: false

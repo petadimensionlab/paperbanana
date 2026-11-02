@@ -39,6 +39,7 @@ class IRVisualizerAgent(BaseAgent):
         prompt_recorder=None,
         dpi: int = 200,
         image_gen: Optional[ImageGenProvider] = None,
+        plot_vlm: Optional[VLMProvider] = None,
     ):
         super().__init__(vlm_provider, prompt_dir, prompt_recorder=prompt_recorder)
         self.output_dir = Path(output_dir)
@@ -48,7 +49,7 @@ class IRVisualizerAgent(BaseAgent):
         )
         self._plot_visualizer = VisualizerAgent(
             image_gen or DummyImageGen(),
-            vlm_provider,
+            plot_vlm or vlm_provider,
             prompt_dir=prompt_dir,
             output_dir=str(self.output_dir),
             prompt_recorder=prompt_recorder,

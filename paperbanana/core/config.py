@@ -155,9 +155,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = Field(default="http://localhost:11434/v1", alias="OLLAMA_BASE_URL")
     ollama_model: Optional[str] = Field(default=None, alias="OLLAMA_MODEL")
     ollama_json_mode: bool = Field(default=False, alias="OLLAMA_JSON_MODE")
-    ollama_reasoning_effort: Optional[str] = Field(
-        default="none", alias="OLLAMA_REASONING_EFFORT"
-    )
+    ollama_reasoning_effort: Optional[str] = Field(default="none", alias="OLLAMA_REASONING_EFFORT")
     ollama_timeout: float = Field(default=900.0, alias="OLLAMA_TIMEOUT")
     ollama_image_max_edge: int = Field(default=1280, alias="OLLAMA_IMAGE_MAX_EDGE")
     ollama_image_format: str = Field(default="JPEG", alias="OLLAMA_IMAGE_FORMAT")
@@ -166,6 +164,27 @@ class Settings(BaseSettings):
         alias="OPENAI_LOCAL_BASE_URL",
     )
     openai_local_json_mode: bool = Field(default=False, alias="OPENAI_LOCAL_JSON_MODE")
+    openai_local_api_key: Optional[str] = Field(default=None, alias="OPENAI_LOCAL_API_KEY")
+    openai_local_reasoning_effort: Optional[str] = Field(
+        default="none", alias="OPENAI_LOCAL_REASONING_EFFORT"
+    )
+    openai_local_timeout: float = Field(default=900.0, alias="OPENAI_LOCAL_TIMEOUT")
+    openai_local_image_max_edge: int = Field(default=1280, alias="OPENAI_LOCAL_IMAGE_MAX_EDGE")
+    openai_local_image_format: str = Field(default="JPEG", alias="OPENAI_LOCAL_IMAGE_FORMAT")
+    openai_local_extra_body: Optional[dict[str, Any]] = Field(
+        default=None, alias="OPENAI_LOCAL_EXTRA_BODY"
+    )
+    omlx_base_url: str = Field(default="http://localhost:8000/v1", alias="OMLX_BASE_URL")
+    omlx_model: Optional[str] = Field(default=None, alias="OMLX_MODEL")
+    omlx_api_key: Optional[str] = Field(default=None, alias="OMLX_API_KEY")
+    tensorfold_base_url: str = Field(
+        default="http://localhost:8080/v1", alias="TENSORFOLD_BASE_URL"
+    )
+    tensorfold_model: Optional[str] = Field(default=None, alias="TENSORFOLD_MODEL")
+    vllm_base_url: str = Field(default="http://localhost:8000/v1", alias="VLLM_BASE_URL")
+    vllm_model: Optional[str] = Field(default=None, alias="VLLM_MODEL")
+    vllm_api_key: Optional[str] = Field(default=None, alias="VLLM_API_KEY")
+    vlm_routing: Optional[dict[str, Any]] = Field(default=None, alias="VLM_ROUTING")
 
     # LiteLLM settings
     litellm_model: Optional[str] = Field(default=None, alias="LITELLM_MODEL")
@@ -325,6 +344,44 @@ class Settings(BaseSettings):
             raise ValueError("render_mode must be diffusion, ir_fast, or ir_quality")
         return value
 
+    @field_validator("openai_local_reasoning_effort", mode="before")
+    @classmethod
+    def validate_openai_local_reasoning_effort(cls, v: Any) -> Optional[str]:
+        """Normalize the generic local provider's reasoning effort hint."""
+        if v is None:
+            return None
+        value = str(v).strip().lower()
+        if value in ("", "default", "auto"):
+            return None
+        if value not in ("none", "off", "low", "medium", "high", "max"):
+            raise ValueError(
+                "openai_local_reasoning_effort must be one of: none, off, low, "
+                "medium, high, max (or empty)"
+            )
+        return value
+
+    @field_validator("openai_local_timeout")
+    @classmethod
+    def validate_openai_local_timeout(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("openai_local_timeout must be > 0")
+        return v
+
+    @field_validator("openai_local_image_max_edge")
+    @classmethod
+    def validate_openai_local_image_max_edge(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("openai_local_image_max_edge must be >= 0")
+        return v
+
+    @field_validator("openai_local_image_format", mode="before")
+    @classmethod
+    def validate_openai_local_image_format(cls, v: Any) -> str:
+        value = "JPEG" if v is None else str(v).strip().upper()
+        if value not in ("PNG", "JPEG", "WEBP"):
+            raise ValueError("openai_local_image_format must be one of: PNG, JPEG, WEBP")
+        return value
+
     @field_validator("vector_export", mode="before")
     @classmethod
     def validate_vector_export(cls, v: Any) -> str:
@@ -385,6 +442,19 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "vlm.ollama_image_max_edge": "ollama_image_max_edge",
         "vlm.openai_local_base_url": "openai_local_base_url",
         "vlm.openai_local_json_mode": "openai_local_json_mode",
+        "vlm.openai_local_api_key": "openai_local_api_key",
+        "vlm.openai_local_reasoning_effort": "openai_local_reasoning_effort",
+        "vlm.openai_local_timeout": "openai_local_timeout",
+        "vlm.openai_local_image_max_edge": "openai_local_image_max_edge",
+        "vlm.openai_local_extra_body": "openai_local_extra_body",
+        "vlm.omlx_base_url": "omlx_base_url",
+        "vlm.omlx_model": "omlx_model",
+        "vlm.omlx_api_key": "omlx_api_key",
+        "vlm.tensorfold_base_url": "tensorfold_base_url",
+        "vlm.tensorfold_model": "tensorfold_model",
+        "vlm.vllm_base_url": "vllm_base_url",
+        "vlm.vllm_model": "vllm_model",
+        "vlm.vllm_api_key": "vllm_api_key",
         "image.provider": "image_provider",
         "image.model": "image_model",
         "image.quality": "image_quality",
@@ -424,6 +494,9 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
     def _recurse(d: dict, prefix: str = "") -> None:
         for k, v in d.items():
             full_key = f"{prefix}.{k}" if prefix else k
+            if full_key == "vlm.routing":
+                flat["vlm_routing"] = v
+                continue
             if isinstance(v, dict):
                 _recurse(v, full_key)
             else:

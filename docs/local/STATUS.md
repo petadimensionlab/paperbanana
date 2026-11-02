@@ -33,8 +33,8 @@ This file is the resume point. Read it first after an interrupted session.
 | 2c. Speed profile docs/configs | DONE | `configs/local/speed.yaml` |
 | 3. Quality IR critic | DONE | `ir_quality` uses `IRCriticAgent` + `revised_ir` |
 | 3b. TikZ from IR | DONE | `dot -Tplain` -> standalone TikZ, `pdflatex` verified |
-| 4. Routing (Tailnet/oMLX/TensorFold) | TODO | per-role provider selection is next |
-| 5. Fork/public release | TODO | `gh repo fork`, CI, release tag |
+| 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
+| 5. Fork/public release | IN PROGRESS | metadata updated; fork/CI/release pending |
 | 6. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
 
 ## Verified locally
@@ -55,22 +55,27 @@ This file is the resume point. Read it first after an interrupted session.
 
 1. `--format svg` is rejected by `Settings.validate_output_format` (existing bug).
    Use `--format png --vector-export both`; the vector files are written separately.
-2. `openai_local` lacks API key / `extra_body` / `reasoning_effort` support.
-3. No per-role `VLM_ROUTING` yet, so Tailnet hybrid routing (oMLX/TensorFold/vLLM)
-   is not active. Ollama remote works by setting `OLLAMA_BASE_URL`.
-4. Graphviz theme is still plain (Helvetica 10pt, minimal palette).
-5. `server.json` still identifies the upstream MCP server.
-6. `paperbanana local ...` CLI (init/doctor/render/benchmark) is not implemented;
+2. Graphviz theme is still plain (Helvetica 10pt, minimal palette).
+3. `server.json` packages still point at the PyPI name `paperbanana`; the fork is
+   distributed via GitHub releases, not PyPI.
+4. `paperbanana local ...` CLI (init/doctor/render/benchmark) is not implemented;
    profiles are used with `--config`.
-7. IR mode still calls the `structurer` progress label during vector export even
+5. IR mode still calls the `structurer` progress label during vector export even
    when it reuses the cached IR (cosmetic).
+6. Qwen3.8-Flash-Next/Sushi is not part of the default profiles. The implemented
+   Phase 4 routing uses Ollama/oMLX/TensorFold/vLLM with Qwen3.5 models.
+7. Remote `pb-quality` / `pb-speed` aliases and the `shinjimac-studio` models are
+   not yet pulled/verified; the current remote Ollama only has small models.
 
 ## Next step
 
-Phase 4: add a per-role provider factory (`VLM_ROUTING`) and a generic
-OpenAI-compatible provider with API key / `extra_body` / `reasoning_effort`,
-then wire `planner`/`critic` to `shinjimac-studio` and `structurer`/`retriever`
-to a text-only TensorFold endpoint. Keep local fallback explicit.
+Phase 5: finish the public fork.
+
+1. Create `petadimensionlab/paperbanana` with `gh repo fork --clone=false`.
+2. Rename `origin` to `upstream`, add the fork as `origin`, push `main` and `local`.
+3. Add/verify CI on Ubuntu + macOS (Graphviz installed), no PyPI publish.
+4. Tag `v0.3.0+petadim.1` and attach wheel/sdist to a GitHub release.
+5. Run the release checklist in `docs/local/STATUS.md` before making it public.
 
 ## Resume in a new OpenCode session
 

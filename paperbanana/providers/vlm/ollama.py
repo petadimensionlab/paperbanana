@@ -121,8 +121,7 @@ class OllamaVLM(VLMProvider):
                 "type": "image_url",
                 "image_url": {
                     "url": (
-                        f"data:image/{self._image_format.lower()};base64,"
-                        f"{self._prepare_image(img)}"
+                        f"data:image/{self._image_format.lower()};base64,{self._prepare_image(img)}"
                     )
                 },
             }
