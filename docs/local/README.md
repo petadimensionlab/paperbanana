@@ -70,6 +70,35 @@ pdflatex final_output.tex
 - `ir_fast` — one VLM call -> IR -> Graphviz; no critic; 1 iteration
 - `ir_quality` — full planning -> IR -> critic loop -> Graphviz
 
+## Infographic theme (hybrid D)
+
+The `infographic` theme renders a deterministic 16:9 SVG/PDF with the exact IR
+labels, pastel panels, a title, icons, and an optional locally generated
+background. It does not ask a diffusion model to draw text.
+
+```bash
+.venv/bin/paperbanana generate \
+  --config configs/local/m1ultra-infographic.yaml \
+  -i method.txt -c "Overview of the method"
+```
+
+Set `pipeline.infographic_background` to an image path (or
+`INFOGRAPHIC_BACKGROUND`) to composite a local background. The repository ships
+`assets/local/watercolor-bg.png`, generated offline with mflux/FLUX.2 klein 4B:
+
+```bash
+uv venv /tmp/mflux-venv
+uv pip install --python /tmp/mflux-venv/bin/python mflux
+/tmp/mflux-venv/bin/mflux-generate-flux2 \
+  --model flux2-klein-4b --quantize 4 --steps 4 \
+  --width 1024 --height 576 --seed 42 \
+  --prompt "soft pastel abstract academic background, light blue mint and peach watercolor paper texture, very subtle geometric shapes, lots of white space, clean minimal, no text, no letters" \
+  --output assets/local/watercolor-bg.png
+```
+
+The theme supports Japanese labels; `rsvg-convert` is used to produce PNG/PDF.
+Without `rsvg-convert`, the SVG is still written.
+
 ## Routing between local/self-hosted providers
 
 `vlm.provider: routing` selects a provider per agent role. This is useful when

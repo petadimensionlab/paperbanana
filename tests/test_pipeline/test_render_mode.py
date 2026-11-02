@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 from pathlib import Path
 
@@ -146,3 +147,35 @@ def test_pipeline_exposes_routed_providers(tmp_path: Path):
     assert pipeline._vlm_for("planner").name == "ollama"
     assert pipeline._vlm_for("structurer").name == "tensorfold"
     assert pipeline._vlm_for("structurer").model_name == "qwen3.6-35b-a3b"
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(
+    __import__("shutil").which("rsvg-convert") is None, reason="rsvg-convert not installed"
+)
+async def test_ir_fast_infographic_theme(tmp_path: Path):
+    vlm = _MockVLM(_ir_json())
+    settings = Settings(
+        render_mode="ir_fast",
+        render_theme="infographic",
+        vlm_provider="ollama",
+        image_provider="none",
+        vector_export="both",
+        output_dir=str(tmp_path),
+        save_prompts=False,
+        save_iterations=True,
+        refinement_iterations=1,
+    )
+    pipeline = PaperBananaPipeline(settings=settings, vlm_client=vlm, image_gen_fn=DummyImageGen())
+    result = await pipeline.generate(
+        GenerationInput(
+            source_context="A three-stage pipeline: input, encoder, output.",
+            communicative_intent="Overview of the pipeline",
+            diagram_type=DiagramType.METHODOLOGY,
+        )
+    )
+    run_dir = Path(result.image_path).parent
+    assert Path(result.image_path).exists()
+    assert (run_dir / "final_output.svg").exists()
+    assert (run_dir / "final_output.pdf").exists()
+    assert "Test pipeline" in html.unescape((run_dir / "final_output.svg").read_text())

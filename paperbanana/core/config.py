@@ -18,6 +18,7 @@ ExemplarRetrievalMode = Literal["external_only", "external_then_rerank"]
 Venue = str
 VectorExportMode = Literal["none", "svg", "pdf", "both"]
 RenderMode = Literal["diffusion", "ir_fast", "ir_quality"]
+RenderTheme = Literal["graphviz", "infographic"]
 
 
 class VLMConfig(BaseSettings):
@@ -92,6 +93,9 @@ class Settings(BaseSettings):
     )
     vector_export: VectorExportMode = "none"
     render_mode: RenderMode = Field(default="diffusion", alias="RENDER_MODE")
+    render_theme: RenderTheme = Field(default="graphviz", alias="RENDER_THEME")
+    infographic_background: Optional[str] = Field(default=None, alias="INFOGRAPHIC_BACKGROUND")
+    infographic_show_edge_labels: bool = Field(default=False, alias="INFOGRAPHIC_SHOW_EDGE_LABELS")
     num_candidates: int = Field(
         default=1,
         ge=1,
@@ -348,6 +352,15 @@ class Settings(BaseSettings):
             raise ValueError("render_mode must be diffusion, ir_fast, or ir_quality")
         return value
 
+    @field_validator("render_theme", mode="before")
+    @classmethod
+    def validate_render_theme(cls, v: Any) -> str:
+        """Validate the IR theme."""
+        value = "graphviz" if v is None else str(v).strip().lower()
+        if value not in ("graphviz", "infographic"):
+            raise ValueError("render_theme must be graphviz or infographic")
+        return value
+
     @field_validator("openai_local_reasoning_effort", mode="before")
     @classmethod
     def validate_openai_local_reasoning_effort(cls, v: Any) -> Optional[str]:
@@ -483,6 +496,9 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.venue_dir": "venue_dir",
         "pipeline.vector_export": "vector_export",
         "pipeline.render_mode": "render_mode",
+        "pipeline.render_theme": "render_theme",
+        "pipeline.infographic_background": "infographic_background",
+        "pipeline.infographic_show_edge_labels": "infographic_show_edge_labels",
         "output.dir": "output_dir",
         "output.format": "output_format",
         "output.vector_export": "vector_export",

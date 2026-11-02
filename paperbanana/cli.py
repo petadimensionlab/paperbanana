@@ -454,6 +454,11 @@ def generate(
             "ir_quality (IR + critic loop). Local profiles use ir_*."
         ),
     ),
+    render_theme: Optional[str] = typer.Option(
+        None,
+        "--render-theme",
+        help="IR theme: graphviz (default) or infographic (rich 16:9 SVG/PDF).",
+    ),
     progress_json: bool = typer.Option(
         False,
         "--progress-json",
@@ -502,6 +507,9 @@ def generate(
         raise typer.Exit(1)
     if render_mode and render_mode.lower() not in ("diffusion", "ir_fast", "ir_quality"):
         console.print("[red]Error: --render-mode must be diffusion, ir_fast, or ir_quality[/red]")
+        raise typer.Exit(1)
+    if render_theme and render_theme.lower() not in ("graphviz", "infographic"):
+        console.print("[red]Error: --render-theme must be graphviz or infographic[/red]")
         raise typer.Exit(1)
     if pdf_pages and (continue_last or continue_run):
         console.print(
@@ -613,6 +621,8 @@ def generate(
         overrides["vector_export"] = vector_export.lower()
     if render_mode is not None:
         overrides["render_mode"] = render_mode.lower()
+    if render_theme is not None:
+        overrides["render_theme"] = render_theme.lower()
     if prompt_dir:
         overrides["prompt_dir"] = prompt_dir
     if generate_caption:

@@ -311,6 +311,9 @@ class PaperBananaPipeline:
                 prompt_recorder=self._prompt_recorder,
                 image_gen=self._image_gen,
                 plot_vlm=self._vlm_for("visualizer"),
+                theme=self.settings.render_theme,
+                background_image=self.settings.infographic_background,
+                show_edge_labels=self.settings.infographic_show_edge_labels,
             )
         else:
             self.visualizer = VisualizerAgent(
@@ -1022,6 +1025,38 @@ class PaperBananaPipeline:
                 return None, None
 
         save_json(ir_model.model_dump(), run_dir / "diagram_ir.json")
+
+        if self.settings.render_theme == "infographic" and self.settings.render_mode != "diffusion":
+            from paperbanana.vector.infographic_svg import write_infographic
+
+            svg_file = write_infographic(
+                ir_model,
+                run_dir / "final_output.png",
+                background_image=self.settings.infographic_background,
+                show_edge_labels=self.settings.infographic_show_edge_labels,
+                width=3200,
+            )
+            svg_path = str(svg_file) if vector_mode in ("svg", "both") else None
+            pdf_file = svg_file.with_suffix(".pdf")
+            pdf_path = str(pdf_file) if vector_mode in ("pdf", "both") else None
+            struct_seconds = time.perf_counter() - struct_start
+            _emit_progress(
+                progress_callback,
+                PipelineProgressEvent(
+                    stage=PipelineProgressStage.STRUCTURER_END,
+                    message="Infographic export done",
+                    seconds=struct_seconds,
+                    extra={"svg": svg_path, "pdf": pdf_path},
+                ),
+            )
+            self._emit_progress(
+                "vector_export_completed",
+                seconds=round(struct_seconds, 2),
+                svg=svg_path,
+                pdf=pdf_path,
+            )
+            return svg_path, pdf_path
+
         dot_src = diagram_ir_to_dot(ir_model)
         (run_dir / "diagram.dot").write_text(dot_src, encoding="utf-8")
 
@@ -1798,7 +1833,20 @@ class PaperBananaPipeline:
                             title=input.communicative_intent or "Methodology Diagram",
                         )
                 save_json(diagram_ir.model_dump(), self._run_dir / "diagram_ir.json")
-                if self.settings.render_mode != "diffusion":
+                if (
+                    self.settings.render_mode != "diffusion"
+                    and self.settings.render_theme == "infographic"
+                ):
+                    from paperbanana.vector.infographic_svg import write_infographic
+
+                    write_infographic(
+                        diagram_ir,
+                        Path(final_output_path).with_suffix(".png"),
+                        background_image=self.settings.infographic_background,
+                        show_edge_labels=self.settings.infographic_show_edge_labels,
+                        width=3200,
+                    )
+                elif self.settings.render_mode != "diffusion":
                     dot_src = diagram_ir_to_dot(diagram_ir)
                     if not render_dot_to_file(dot_src, final_output_path, "svg"):
                         logger.warning(

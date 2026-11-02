@@ -19,6 +19,7 @@ from paperbanana.vector.graphviz_render import (
     find_dot_executable,
     render_dot_to_file,
 )
+from paperbanana.vector.infographic_svg import write_infographic
 
 logger = structlog.get_logger()
 
@@ -40,10 +41,16 @@ class IRVisualizerAgent(BaseAgent):
         dpi: int = 200,
         image_gen: Optional[ImageGenProvider] = None,
         plot_vlm: Optional[VLMProvider] = None,
+        theme: str = "graphviz",
+        background_image: Optional[str] = None,
+        show_edge_labels: bool = False,
     ):
         super().__init__(vlm_provider, prompt_dir, prompt_recorder=prompt_recorder)
         self.output_dir = Path(output_dir)
         self.dpi = dpi
+        self.theme = theme
+        self.background_image = background_image
+        self.show_edge_labels = show_edge_labels
         self.structurer = StructurerAgent(
             vlm_provider, prompt_dir=prompt_dir, prompt_recorder=prompt_recorder
         )
@@ -110,7 +117,7 @@ class IRVisualizerAgent(BaseAgent):
             self._last_vector_paths = dict(self._plot_visualizer._last_vector_paths)
             return path
 
-        if not find_dot_executable():
+        if self.theme != "infographic" and not find_dot_executable():
             raise RuntimeError(
                 "Graphviz `dot` is required for render_mode=ir_*. "
                 "Install it (macOS: brew install graphviz; Debian: apt install graphviz)."
@@ -128,25 +135,39 @@ class IRVisualizerAgent(BaseAgent):
 
         iter_dir = ensure_dir(self.output_dir / f"iter_{iteration}")
         save_json(ir.model_dump(), iter_dir / "diagram_ir.json")
-        dot_source = diagram_ir_to_dot(ir)
-        (iter_dir / "diagram.dot").write_text(dot_source, encoding="utf-8")
 
         png_path = output_path or str(self.output_dir / f"diagram_iter_{iteration}.png")
-        if not render_dot_to_file(dot_source, png_path, "png", dpi=self.dpi):
-            raise RuntimeError(f"Graphviz failed to render {png_path}")
 
-        # Always emit an SVG next to the raster: the local profiles are
-        # vector-first, and the Critic can read the PNG.
-        svg_path = str(Path(png_path).with_suffix(".svg"))
-        if render_dot_to_file(dot_source, svg_path, "svg", dpi=self.dpi):
-            self._last_vector_paths["svg"] = svg_path
+        if self.theme == "infographic":
+            svg_path = write_infographic(
+                ir,
+                png_path,
+                background_image=self.background_image,
+                show_edge_labels=self.show_edge_labels,
+                width=max(1600, self.dpi * 16),
+            )
+            self._last_vector_paths["svg"] = str(svg_path)
+            pdf_path = svg_path.with_suffix(".pdf")
+            if pdf_path.exists():
+                self._last_vector_paths["pdf"] = str(pdf_path)
+        else:
+            dot_source = diagram_ir_to_dot(ir)
+            (iter_dir / "diagram.dot").write_text(dot_source, encoding="utf-8")
+            if not render_dot_to_file(dot_source, png_path, "png", dpi=self.dpi):
+                raise RuntimeError(f"Graphviz failed to render {png_path}")
 
-        for fmt in vector_formats or []:
-            if fmt == "svg":
-                continue
-            candidate = str(Path(png_path).with_suffix(f".{fmt}"))
-            if render_dot_to_file(dot_source, candidate, fmt, dpi=self.dpi):
-                self._last_vector_paths[fmt] = candidate
+            # Always emit an SVG next to the raster: the local profiles are
+            # vector-first, and the Critic can read the PNG.
+            svg_path = str(Path(png_path).with_suffix(".svg"))
+            if render_dot_to_file(dot_source, svg_path, "svg", dpi=self.dpi):
+                self._last_vector_paths["svg"] = svg_path
+
+            for fmt in vector_formats or []:
+                if fmt == "svg":
+                    continue
+                candidate = str(Path(png_path).with_suffix(f".{fmt}"))
+                if render_dot_to_file(dot_source, candidate, fmt, dpi=self.dpi):
+                    self._last_vector_paths[fmt] = candidate
 
         logger.info(
             "IR diagram rendered",
