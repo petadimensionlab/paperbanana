@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.llmsresearch/paperbanana -->
+<!-- mcp-name: io.github.petadimensionlab/paperbanana -->
 <table align="center" width="100%" style="border: none; border-collapse: collapse;">
   <tr>
     <td width="220" align="left" valign="middle" style="border: none;">
@@ -36,6 +36,14 @@
 > Xiyu Wei, Sujian Li, Tomas Pfister, and Jinsung Yoon ([arXiv:2601.23265](https://arxiv.org/abs/2601.23265)).
 > This project is **not affiliated with or endorsed by** the original authors or Google Research.
 > The implementation is based on the publicly available paper and may differ from the original system.
+
+> **Fork notice**: This repository is **`petadimensionlab/paperbanana`**, a public fork of
+> [`llmsresearch/paperbanana`](https://github.com/llmsresearch/paperbanana). It adds fully
+> local/offline, vector-first profiles (`ir_fast` / `ir_quality`) that render diagrams from a
+> structured IR with Graphviz and TikZ instead of a diffusion image model. See
+> [`docs/local/README.md`](docs/local/README.md) and
+> [`docs/local/STATUS.md`](docs/local/STATUS.md). The PyPI package `paperbanana` is the upstream
+> project and does **not** include these changes; install this fork from git or a GitHub release.
 
 An agentic framework for generating publication-quality academic diagrams and statistical plots from text descriptions. Supports OpenAI (GPT-5.2 + GPT-Image-1.5), Azure OpenAI / Foundry, Google Gemini, and Atlas Cloud providers.
 
