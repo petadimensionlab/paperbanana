@@ -1,17 +1,16 @@
-name: Release to PyPI
+name: Release (GitHub)
 
 on:
   push:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    environment: release
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -48,8 +47,6 @@ jobs:
           OUT=$(/tmp/verify-venv/bin/paperbanana --version)
           echo "$OUT"
           echo "$OUT" | grep -q "paperbanana ${GITHUB_REF_NAME#v}"
-          # Introspect the click command tree instead of grepping rendered
-          # help text — rich truncates flag names at narrow console widths.
           /tmp/verify-venv/bin/python - <<'PY'
           import typer.main
 
@@ -58,13 +55,15 @@ jobs:
           cmd = typer.main.get_command(app)
           gen = cmd.commands["generate"]
           flags = {opt for param in gen.params for opt in param.opts}
-          required = {"--budget", "--optimize", "--format", "--export-tikz"}
+          required = {"--budget", "--optimize", "--format", "--export-tikz", "--render-mode"}
           missing = required - flags
           if missing:
               raise SystemExit(f"wheel CLI is stale — missing flags: {sorted(missing)}")
           print("CLI flags verified:", sorted(required))
           PY
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

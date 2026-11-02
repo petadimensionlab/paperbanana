@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, local]
   pull_request:
-    branches: [main]
+    branches: [main, local]
 
 jobs:
   lint:
@@ -35,6 +35,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
+      - name: Install Graphviz (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+      - name: Install Graphviz (macOS)
+        if: runner.os == 'macOS'
+        run: brew install graphviz
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests with coverage
