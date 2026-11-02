@@ -72,6 +72,13 @@ OpenAI-compatible provider with API key / `extra_body` / `reasoning_effort`,
 then wire `planner`/`critic` to `shinjimac-studio` and `structurer`/`retriever`
 to a text-only TensorFold endpoint. Keep local fallback explicit.
 
+## Resume in a new OpenCode session
+
+Paste this into a fresh session:
+
+> Read `docs/local/STATUS.md` and continue from the first TODO phase.
+> Work on branch `local`; keep the checkpoint small and commit after each phase.
+
 ## Resume commands
 
 ```bash
