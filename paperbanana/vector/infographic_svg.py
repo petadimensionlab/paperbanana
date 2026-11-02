@@ -265,10 +265,14 @@ def _node_svg(
     box: _NodeBox,
     color: tuple[str, str, str],
     icon_dir: Optional[str] = None,
+    *,
+    draw_card: bool = True,
+    draw_text: bool = True,
+    draw_icon: bool = True,
 ) -> str:
     node = box.node
     _fill, stroke, text_color = color
-    show_icon = box.w >= 170
+    show_icon = draw_icon and box.w >= 170
     icon_w = 44 if show_icon else 0
     text_cx = box.x + icon_w + (box.w - icon_w) / 2
     width_chars = max(8, int((box.w - icon_w - 14) / 8.4))
@@ -302,17 +306,23 @@ def _node_svg(
          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
         <path d="{icon}" transform="scale(1.1)"/>
       </g>"""
-    return f"""
-    <g class="node">
+    card_svg = ""
+    if draw_card:
+        card_svg = f"""
       <rect x="{box.x:.1f}" y="{box.y:.1f}" width="{box.w:.1f}" height="{box.h:.1f}"
             rx="12" fill="#ffffff" fill-opacity="0.94" stroke="{stroke}" stroke-width="1.4"
             filter="url(#cardShadow)"/>
       <rect x="{box.x:.1f}" y="{box.y:.1f}" width="5" height="{box.h:.1f}"
-            rx="2.5" fill="{stroke}"/>
-      {icon_svg}
+            rx="2.5" fill="{stroke}"/>"""
+    text_svg = ""
+    if draw_text:
+        text_svg = f"""
       <text x="{text_cx:.1f}" y="{text_y:.1f}" text-anchor="middle"
             font-family="{FONT}" font-size="{font_size}" font-weight="600"
-            fill="{text_color}">{tspans}</text>
+            fill="{text_color}">{tspans}</text>"""
+    return f"""
+    <g class="node">{card_svg}
+      {icon_svg}{text_svg}
     </g>"""
 
 
@@ -369,8 +379,18 @@ def render_infographic_svg(
     panel_dir: Optional[str] = None,
     panel_images: Optional[dict[str, str]] = None,
     show_edge_labels: bool = False,
+    mode: str = "full",
+    background_opacity: float = 0.20,
 ) -> str:
-    """Return a rich 16:9 SVG for *ir*."""
+    """Return a rich 16:9 SVG for *ir*.
+
+    mode:
+      - full: background, panels, cards, text, edges
+      - structure: panels/cards/edges only (for img2img/ControlNet)
+      - overlay: text/icons over an existing styled image
+    """
+    overlay = mode == "overlay"
+    structure = mode == "structure"
     panels, boxes, edges = _layout(ir)
     panel_svg: list[str] = []
     clip_defs: list[str] = []
@@ -399,28 +419,45 @@ def render_infographic_svg(
                 f'clip-path="url(#{clip_id})" opacity="0.22" '
                 f'href="{_image_data_uri(str(panel_file))}"/>'
             )
+        panel_rect = ""
+        if not overlay:
+            panel_rect = (
+                f'<rect x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" '
+                f'height="{panel.h:.1f}" rx="18" fill="{fill}" stroke="{stroke}" '
+                'stroke-opacity="0.55" stroke-width="1.2"/>'
+                + (panel_image if not structure else "")
+            )
+        panel_label = ""
+        if not structure:
+            panel_label = (
+                f'<text x="{panel.x + panel.w / 2:.1f}" y="{panel.y + 23:.1f}" '
+                f'text-anchor="middle" font-family="{FONT}" font-size="17" '
+                f'font-weight="700" fill="{text_color}">{_esc(panel.label)}</text>'
+            )
         panel_svg.append(
             f"""
-    <g class="panel">
-      <rect x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" height="{panel.h:.1f}"
-            rx="18" fill="{fill}" stroke="{stroke}" stroke-opacity="0.55" stroke-width="1.2"/>
-      {panel_image}
-      <text x="{panel.x + panel.w / 2:.1f}" y="{panel.y + 23:.1f}" text-anchor="middle"
-            font-family="{FONT}" font-size="17" font-weight="700" fill="{text_color}">
-        {_esc(panel.label)}
-      </text>
+    <g class="panel">{panel_rect}{panel_label}
     </g>"""
         )
 
     node_svg = [
-        _node_svg(box, PALETTE[i % len(PALETTE)], icon_dir=icon_dir)
+        _node_svg(
+            box,
+            PALETTE[i % len(PALETTE)],
+            icon_dir=icon_dir,
+            draw_card=not overlay,
+            draw_text=not structure,
+            draw_icon=not structure,
+        )
         for i, box in enumerate(boxes.values())
     ]
-    edge_svg = [
-        _edge_svg(boxes[src], boxes[dst], label if show_edge_labels else "")
-        for src, dst, label in edges
-        if src in boxes and dst in boxes
-    ]
+    edge_svg = []
+    if not overlay:
+        edge_svg = [
+            _edge_svg(boxes[src], boxes[dst], label if show_edge_labels else "")
+            for src, dst, label in edges
+            if src in boxes and dst in boxes
+        ]
 
     bg = ""
     if background_image:
@@ -430,13 +467,30 @@ def render_infographic_svg(
         bg_path = _Path(background_image)
         if bg_path.exists():
             encoded = base64.b64encode(bg_path.read_bytes()).decode("ascii")
+            opacity = 1.0 if overlay else background_opacity
             bg = (
                 f'<image href="data:image/png;base64,{encoded}" x="0" y="0" '
                 f'width="{CANVAS_W}" height="{CANVAS_H}" '
-                'preserveAspectRatio="xMidYMid slice" opacity="0.20"/>'
+                f'preserveAspectRatio="xMidYMid slice" opacity="{opacity}"/>'
             )
         else:
             logger.warning("Infographic background not found", path=background_image)
+
+    bg_rects = ""
+    if not overlay:
+        bg_rects = (
+            '<rect width="100%" height="100%" fill="url(#bg)"/>'
+            '<rect width="100%" height="100%" fill="url(#dots)"/>'
+        )
+    title_svg = ""
+    if not structure:
+        title_svg = (
+            f'<text x="{CANVAS_W / 2}" y="52" text-anchor="middle" '
+            f'font-family="{FONT}" font-size="32" font-weight="800" '
+            f'fill="#0f172a">{_esc(ir.title)}</text>'
+            f'<line x1="{CANVAS_W / 2 - 36}" y1="66" x2="{CANVAS_W / 2 + 36}" '
+            'y2="66" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>'
+        )
 
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_W}" height="{CANVAS_H}"
@@ -457,13 +511,9 @@ def render_infographic_svg(
     </marker>
     {"".join(clip_defs)}
   </defs>
-  <rect width="100%" height="100%" fill="url(#bg)"/>
-  <rect width="100%" height="100%" fill="url(#dots)"/>
+  {bg_rects}
   {bg}
-  <text x="{CANVAS_W / 2}" y="52" text-anchor="middle" font-family="{FONT}"
-        font-size="32" font-weight="800" fill="#0f172a">{_esc(ir.title)}</text>
-  <line x1="{CANVAS_W / 2 - 36}" y1="66" x2="{CANVAS_W / 2 + 36}" y2="66"
-        stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  {title_svg}
   {"".join(panel_svg)}
   {"".join(edge_svg)}
   {"".join(node_svg)}
@@ -480,6 +530,8 @@ def write_infographic(
     panel_dir: Optional[str] = None,
     panel_images: Optional[dict[str, str]] = None,
     show_edge_labels: bool = False,
+    mode: str = "full",
+    background_opacity: float = 0.20,
     width: int = 3200,
 ) -> Path:
     """Write SVG/PNG/PDF next to *output_path* (base suffix is replaced)."""
@@ -494,6 +546,8 @@ def write_infographic(
             panel_dir=panel_dir,
             panel_images=panel_images,
             show_edge_labels=show_edge_labels,
+            mode=mode,
+            background_opacity=background_opacity,
         ),
         encoding="utf-8",
     )

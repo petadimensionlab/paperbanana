@@ -318,6 +318,11 @@ class PaperBananaPipeline:
                 panel_diffusion=self.settings.infographic_panel_diffusion,
                 mflux_bin=self.settings.infographic_mflux_bin,
                 mflux_model=self.settings.infographic_mflux_model,
+                img2img=self.settings.infographic_img2img,
+                img2img_strength=self.settings.infographic_img2img_strength,
+                img2img_prompt=self.settings.infographic_img2img_prompt,
+                img2img_model=self.settings.infographic_img2img_model,
+                img2img_bin=self.settings.infographic_img2img_bin,
                 show_edge_labels=self.settings.infographic_show_edge_labels,
             )
         else:
@@ -1094,7 +1099,7 @@ class PaperBananaPipeline:
         save_json(ir_model.model_dump(), run_dir / "diagram_ir.json")
 
         if self.settings.render_theme == "infographic" and self.settings.render_mode != "diffusion":
-            if self.settings.infographic_panel_diffusion:
+            if self.settings.infographic_panel_diffusion or self.settings.infographic_img2img:
                 # Reuse the visualizer's dynamically illustrated SVG/PDF.
                 paths = getattr(self.visualizer, "_last_vector_paths", {})
                 svg_path = None

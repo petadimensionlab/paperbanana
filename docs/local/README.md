@@ -121,6 +121,17 @@ the renderer falls back to `assets/local/panels/`.
 The theme supports Japanese labels; `rsvg-convert` is used to produce PNG/PDF.
 Without `rsvg-convert`, the SVG is still written.
 
+## img2img / ControlNet (experimental)
+
+`infographic_img2img: true` renders a textless structure, runs local img2img
+(FLUX.2 klein 4B), then overlays the exact IR text. This is available in
+`configs/local/lmstudio-infographic-img2img-experimental.yaml`, but it is not
+recommended for final figures yet: local img2img can shift cards, so the
+overlaid text may no longer align. ControlNet would preserve geometry, but the
+FLUX.1-dev ControlNet checkpoints are gated, and the Qwen-Image ControlNet
+variant still shifts boxes slightly. Keep the default deterministic
+infographic + local panel/icon assets for publication output.
+
 ## Routing between local/self-hosted providers
 
 `vlm.provider: routing` selects a provider per agent role. This is useful when

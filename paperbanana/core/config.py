@@ -104,6 +104,20 @@ class Settings(BaseSettings):
     infographic_panel_diffusion: bool = Field(default=False, alias="INFOGRAPHIC_PANEL_DIFFUSION")
     infographic_mflux_bin: Optional[str] = Field(default=None, alias="INFOGRAPHIC_MFLUX_BIN")
     infographic_mflux_model: str = Field(default="flux2-klein-4b", alias="INFOGRAPHIC_MFLUX_MODEL")
+    infographic_img2img: bool = Field(default=False, alias="INFOGRAPHIC_IMG2IMG")
+    infographic_img2img_strength: float = Field(default=0.45, alias="INFOGRAPHIC_IMG2IMG_STRENGTH")
+    infographic_img2img_prompt: str = Field(
+        default=(
+            "polished academic infographic, soft pastel watercolor paper, "
+            "clean cards, subtle shadows and depth, calm professional palette, "
+            "no text, no letters, no words, no labels, preserve the layout"
+        ),
+        alias="INFOGRAPHIC_IMG2IMG_PROMPT",
+    )
+    infographic_img2img_model: str = Field(
+        default="flux2-klein-4b", alias="INFOGRAPHIC_IMG2IMG_MODEL"
+    )
+    infographic_img2img_bin: Optional[str] = Field(default=None, alias="INFOGRAPHIC_IMG2IMG_BIN")
     infographic_show_edge_labels: bool = Field(default=False, alias="INFOGRAPHIC_SHOW_EDGE_LABELS")
     num_candidates: int = Field(
         default=1,
@@ -520,6 +534,11 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.infographic_panel_diffusion": "infographic_panel_diffusion",
         "pipeline.infographic_mflux_bin": "infographic_mflux_bin",
         "pipeline.infographic_mflux_model": "infographic_mflux_model",
+        "pipeline.infographic_img2img": "infographic_img2img",
+        "pipeline.infographic_img2img_strength": "infographic_img2img_strength",
+        "pipeline.infographic_img2img_prompt": "infographic_img2img_prompt",
+        "pipeline.infographic_img2img_model": "infographic_img2img_model",
+        "pipeline.infographic_img2img_bin": "infographic_img2img_bin",
         "pipeline.infographic_show_edge_labels": "infographic_show_edge_labels",
         "output.dir": "output_dir",
         "output.format": "output_format",
