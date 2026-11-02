@@ -198,3 +198,11 @@ def test_ollama_reasoning_effort_invalid():
 def test_effective_vlm_model_tracks_ollama_model():
     settings = Settings(vlm_provider="ollama", ollama_model="qwen3.5:9b")
     assert settings.effective_vlm_model == "qwen3.5:9b"
+
+
+def test_effective_vlm_model_uses_routing_default():
+    settings = Settings(
+        vlm_provider="routing",
+        vlm_routing={"default": {"provider": "ollama", "model": "gemma4:12b"}},
+    )
+    assert settings.effective_vlm_model == "gemma4:12b"

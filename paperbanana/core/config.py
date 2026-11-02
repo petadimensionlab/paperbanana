@@ -212,6 +212,10 @@ class Settings(BaseSettings):
             return self.ollama_model
         if self.vlm_provider == "openai_local" and self.openai_vlm_model:
             return self.openai_vlm_model
+        if self.vlm_provider == "routing" and self.vlm_routing:
+            default = self.vlm_routing.get("default")
+            if isinstance(default, dict) and default.get("model"):
+                return str(default["model"])
         return self.vlm_model
 
     @property

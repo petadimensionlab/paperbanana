@@ -110,6 +110,7 @@ The fallback must be self-hosted; cloud providers are rejected as fallbacks.
 Profiles:
 
 - `configs/local/tailnet-hybrid.yaml` — vision roles on Studio 122B, text/IR roles local, local 9B fallback.
+- `configs/local/m1ultra-remote.yaml` — M1 Ultra Studio `gemma4:12b` via Ollama, fast IR, local 9B fallback.
 - `configs/local/studio128-quality.yaml` — all roles on Studio 122B.
 - `configs/local/spark-vllm.yaml` — DGX Spark vLLM endpoint.
 

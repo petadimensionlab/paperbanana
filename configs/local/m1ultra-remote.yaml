@@ -1,0 +1,45 @@
+# M1 Ultra Studio 128GB (100.127.45.60) via Ollama: fast vector profile.
+# The remote host currently serves gemma4:12b for vision/text; keep local 9B
+# as an explicit fallback. Use a larger model alias (pb-quality) when available.
+vlm:
+  provider: routing
+  routing:
+    default:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: gemma4:12b
+      json_mode: true
+      reasoning_effort: none
+      image_max_edge: 1024
+    fast_ir:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: gemma4:12b
+      json_mode: true
+      reasoning_effort: none
+    fallback:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:9b
+      json_mode: true
+      reasoning_effort: none
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_fast
+  refinement_iterations: 1
+  auto_refine: false
+  num_retrieval_examples: 2
+  optimize_inputs: false
+  output_resolution: 1k
+  num_candidates: 1
+  venue: neurips
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  save_iterations: true
+  save_prompts: false
