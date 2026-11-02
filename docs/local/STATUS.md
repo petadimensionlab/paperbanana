@@ -36,7 +36,7 @@ This file is the resume point. Read it first after an interrupted session.
 | 3b. TikZ from IR | DONE | `dot -Tplain` -> standalone TikZ, `pdflatex` verified |
 | 4. Routing (Tailnet/oMLX/TensorFold) | DONE | per-role `vlm.routing`, generic OpenAI-compatible provider, local fallback |
 | 5. Fork/public release | DONE | public fork + CI green + `v0.3.0+petadim.1` GitHub release |
-| 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, panel washes |
+| 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, dynamic panel illustrations |
 | 7. Benchmarks / img2img | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark; optional ControlNet/img2img |
 
 ## Verified locally

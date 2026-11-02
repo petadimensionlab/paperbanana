@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Optional
 
@@ -45,6 +46,9 @@ class IRVisualizerAgent(BaseAgent):
         background_image: Optional[str] = None,
         icon_dir: Optional[str] = None,
         panel_dir: Optional[str] = None,
+        panel_diffusion: bool = False,
+        mflux_bin: Optional[str] = None,
+        mflux_model: str = "flux2-klein-4b",
         show_edge_labels: bool = False,
     ):
         super().__init__(vlm_provider, prompt_dir, prompt_recorder=prompt_recorder)
@@ -54,6 +58,9 @@ class IRVisualizerAgent(BaseAgent):
         self.background_image = background_image
         self.icon_dir = icon_dir
         self.panel_dir = panel_dir
+        self.panel_diffusion = panel_diffusion
+        self.mflux_bin = mflux_bin
+        self.mflux_model = mflux_model
         self.show_edge_labels = show_edge_labels
         self.structurer = StructurerAgent(
             vlm_provider, prompt_dir=prompt_dir, prompt_recorder=prompt_recorder
@@ -143,12 +150,23 @@ class IRVisualizerAgent(BaseAgent):
         png_path = output_path or str(self.output_dir / f"diagram_iter_{iteration}.png")
 
         if self.theme == "infographic":
+            panel_images = None
+            if self.panel_diffusion:
+                from paperbanana.local.diffusion import generate_panel_images
+
+                panel_images = await asyncio.to_thread(
+                    generate_panel_images,
+                    ir,
+                    mflux_bin=self.mflux_bin,
+                    model=self.mflux_model,
+                )
             svg_path = write_infographic(
                 ir,
                 png_path,
                 background_image=self.background_image,
                 icon_dir=self.icon_dir,
                 panel_dir=self.panel_dir,
+                panel_images=panel_images,
                 show_edge_labels=self.show_edge_labels,
                 width=max(1600, self.dpi * 16),
             )

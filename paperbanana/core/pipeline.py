@@ -315,6 +315,9 @@ class PaperBananaPipeline:
                 background_image=self.settings.infographic_background,
                 icon_dir=self.settings.infographic_icon_dir,
                 panel_dir=self.settings.infographic_panel_dir,
+                panel_diffusion=self.settings.infographic_panel_diffusion,
+                mflux_bin=self.settings.infographic_mflux_bin,
+                mflux_model=self.settings.infographic_mflux_model,
                 show_edge_labels=self.settings.infographic_show_edge_labels,
             )
         else:
@@ -1029,6 +1032,21 @@ class PaperBananaPipeline:
         save_json(ir_model.model_dump(), run_dir / "diagram_ir.json")
 
         if self.settings.render_theme == "infographic" and self.settings.render_mode != "diffusion":
+            if self.settings.infographic_panel_diffusion:
+                # Reuse the visualizer's dynamically illustrated SVG/PDF.
+                paths = getattr(self.visualizer, "_last_vector_paths", {})
+                svg_path = None
+                pdf_path = None
+                if paths.get("svg"):
+                    target = run_dir / "final_output.svg"
+                    target.write_bytes(Path(paths["svg"]).read_bytes())
+                    svg_path = str(target)
+                if paths.get("pdf"):
+                    target = run_dir / "final_output.pdf"
+                    target.write_bytes(Path(paths["pdf"]).read_bytes())
+                    pdf_path = str(target)
+                return svg_path, pdf_path
+
             from paperbanana.vector.infographic_svg import write_infographic
 
             svg_file = write_infographic(

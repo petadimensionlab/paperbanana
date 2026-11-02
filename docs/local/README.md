@@ -104,6 +104,20 @@ The theme also composites locally generated per-node icons from
 ./scripts/generate_local_icons.sh
 ```
 
+To generate panel illustrations from the actual IR groups at run time (cached
+under `~/.cache/paperbanana`), use:
+
+```bash
+MFLUX_BIN=/tmp/mflux-venv/bin/mflux-generate-flux2 \
+.venv/bin/paperbanana generate \
+  --config configs/local/m1ultra-infographic-diffusion.yaml \
+  -i method.txt -c "Overview of the method"
+```
+
+The diffused panel art is blurred before compositing (diffusion can paint
+pseudo-text); all real text remains in the SVG layer. If mflux is unavailable,
+the renderer falls back to `assets/local/panels/`.
+
 The theme supports Japanese labels; `rsvg-convert` is used to produce PNG/PDF.
 Without `rsvg-convert`, the SVG is still written.
 

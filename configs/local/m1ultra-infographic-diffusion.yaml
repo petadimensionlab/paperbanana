@@ -1,0 +1,55 @@
+# M1 Ultra Studio + local panel illustrations.
+# Requires mflux and a cached FLUX.2 klein 4B checkpoint. Set MFLUX_BIN if the
+# binary is not on PATH (for example /tmp/mflux-venv/bin/mflux-generate-flux2).
+# Runtime is offline; images are cached under ~/.cache/paperbanana.
+vlm:
+  provider: routing
+  routing:
+    default:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: gemma4:12b
+      json_mode: true
+      reasoning_effort: none
+      image_max_edge: 1024
+    fast_ir:
+      provider: ollama
+      base_url: http://100.127.45.60:11434/v1
+      model: gemma4:12b
+      json_mode: true
+      reasoning_effort: none
+    fallback:
+      provider: ollama
+      base_url: http://127.0.0.1:11434/v1
+      model: qwen3.5:9b
+      json_mode: true
+      reasoning_effort: none
+
+image:
+  provider: none
+
+pipeline:
+  render_mode: ir_quality
+  render_theme: infographic
+  infographic_background: assets/local/watercolor-bg.png
+  infographic_icon_dir: assets/local/icons
+  infographic_panel_dir: assets/local/panels
+  infographic_panel_diffusion: true
+  infographic_mflux_model: flux2-klein-4b
+  infographic_show_edge_labels: false
+  refinement_iterations: 1
+  auto_refine: false
+  num_retrieval_examples: 2
+  optimize_inputs: false
+  output_resolution: 1k
+  num_candidates: 1
+  venue: neurips
+  vector_export: both
+
+output:
+  dir: outputs
+  format: png
+  vector_export: both
+  export_tikz: false
+  save_iterations: true
+  save_prompts: false

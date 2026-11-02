@@ -101,6 +101,9 @@ class Settings(BaseSettings):
     infographic_panel_dir: Optional[str] = Field(
         default="assets/local/panels", alias="INFOGRAPHIC_PANEL_DIR"
     )
+    infographic_panel_diffusion: bool = Field(default=False, alias="INFOGRAPHIC_PANEL_DIFFUSION")
+    infographic_mflux_bin: Optional[str] = Field(default=None, alias="INFOGRAPHIC_MFLUX_BIN")
+    infographic_mflux_model: str = Field(default="flux2-klein-4b", alias="INFOGRAPHIC_MFLUX_MODEL")
     infographic_show_edge_labels: bool = Field(default=False, alias="INFOGRAPHIC_SHOW_EDGE_LABELS")
     num_candidates: int = Field(
         default=1,
@@ -506,6 +509,9 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.infographic_background": "infographic_background",
         "pipeline.infographic_icon_dir": "infographic_icon_dir",
         "pipeline.infographic_panel_dir": "infographic_panel_dir",
+        "pipeline.infographic_panel_diffusion": "infographic_panel_diffusion",
+        "pipeline.infographic_mflux_bin": "infographic_mflux_bin",
+        "pipeline.infographic_mflux_model": "infographic_mflux_model",
         "pipeline.infographic_show_edge_labels": "infographic_show_edge_labels",
         "output.dir": "output_dir",
         "output.format": "output_format",

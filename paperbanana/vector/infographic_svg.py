@@ -347,6 +347,7 @@ def render_infographic_svg(
     background_image: Optional[str] = None,
     icon_dir: Optional[str] = None,
     panel_dir: Optional[str] = None,
+    panel_images: Optional[dict[str, str]] = None,
     show_edge_labels: bool = False,
 ) -> str:
     """Return a rich 16:9 SVG for *ir*."""
@@ -361,15 +362,23 @@ def render_infographic_svg(
             f'width="{panel.w:.1f}" height="{panel.h:.1f}" rx="18"/></clipPath>'
         )
         panel_image = ""
-        if panel_dir:
-            panel_file = Path(panel_dir) / f"{_panel_key(panel.label)}.png"
-            if panel_file.exists():
-                panel_image = (
-                    f'<image x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" '
-                    f'height="{panel.h:.1f}" preserveAspectRatio="xMidYMid slice" '
-                    f'clip-path="url(#{clip_id})" opacity="0.22" '
-                    f'href="{_image_data_uri(str(panel_file))}"/>'
-                )
+        panel_file: Optional[Path] = None
+        if panel_images:
+            for key in (panel.label, _panel_key(panel.label)):
+                if key in panel_images and Path(panel_images[key]).exists():
+                    panel_file = Path(panel_images[key])
+                    break
+        if panel_file is None and panel_dir:
+            candidate = Path(panel_dir) / f"{_panel_key(panel.label)}.png"
+            if candidate.exists():
+                panel_file = candidate
+        if panel_file is not None:
+            panel_image = (
+                f'<image x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" '
+                f'height="{panel.h:.1f}" preserveAspectRatio="xMidYMid slice" '
+                f'clip-path="url(#{clip_id})" opacity="0.22" '
+                f'href="{_image_data_uri(str(panel_file))}"/>'
+            )
         panel_svg.append(
             f"""
     <g class="panel">
@@ -449,6 +458,7 @@ def write_infographic(
     background_image: Optional[str] = None,
     icon_dir: Optional[str] = None,
     panel_dir: Optional[str] = None,
+    panel_images: Optional[dict[str, str]] = None,
     show_edge_labels: bool = False,
     width: int = 3200,
 ) -> Path:
@@ -462,6 +472,7 @@ def write_infographic(
             background_image=background_image,
             icon_dir=icon_dir,
             panel_dir=panel_dir,
+            panel_images=panel_images,
             show_edge_labels=show_edge_labels,
         ),
         encoding="utf-8",
