@@ -242,6 +242,11 @@ class IRVisualizerAgent(BaseAgent):
                             panel_structure_weight=self.img2img_panel_weight,
                         )
                 if styled is not None:
+                    vector_edges = bool(
+                        self.img2img_mask_composite
+                        and self.img2img_card_weight >= 0.99
+                        and self.img2img_panel_weight >= 0.99
+                    )
                     svg_path = write_infographic(
                         ir,
                         png_path,
@@ -250,6 +255,7 @@ class IRVisualizerAgent(BaseAgent):
                         background_opacity=1.0,
                         icon_dir=self.icon_dir,
                         show_edge_labels=False,
+                        draw_edges=vector_edges,
                         width=max(1600, self.dpi * 16),
                     )
 

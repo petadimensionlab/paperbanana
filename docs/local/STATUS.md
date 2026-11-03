@@ -39,7 +39,8 @@ This file is the resume point. Read it first after an interrupted session.
 | 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, dynamic panel illustrations |
 | 6b. IR quality via LM Studio | DONE | `lmstudio` provider + Qwen3.6-35B-A3B; latest run 18 nodes / 17 edges / 4 groups, no cycles |
 | 6c. Container normalization | DONE | flatten duplicate Encoder/Decoder container nodes and apply final critic IR |
-| 7. img2img/ControlNet | EXPERIMENTAL | card calibration + mask compositing; `card_weight: 1.0` gives flat cards. FLUX ControlNet gated; vector remains default |
+| 7. img2img/ControlNet | EXPERIMENTAL | flat profile (`lmstudio-infographic-flat.yaml`) is vector + background only; img2img remains optional |
+| 7b. Flat vector + background | DONE | `outputs/run_20261103_174907_fc78ca`: 16 nodes / 15 edges / 4 groups, no cycles, 3200×1800 |
 | 8. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
 
 ## Verified locally
@@ -84,9 +85,9 @@ Phase 8: benchmarks and a usable ControlNet path.
 
 1. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
 2. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
-3. Card-level calibration + mask compositing is implemented and safe. The
-   latest hybrid run keeps uniform card geometry; remaining issues are faint
-   diffusion artifacts and occasional IR edge errors.
+3. Use `lmstudio-infographic-flat.yaml` for production: flat vector cards and
+   panels, local background only. The img2img/ControlNet path remains
+   experimental and safely falls back.
 4. Add `paperbanana local doctor` and `local render` CLI.
 
 Release: https://github.com/petadimensionlab/paperbanana/releases/tag/v0.3.0%2Bpetadim.1

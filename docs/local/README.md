@@ -205,6 +205,7 @@ deterministically after the last iteration, so the last review is not lost.
 Profiles:
 
 - `configs/local/lmstudio-quality.yaml` — LM Studio 35B + infographic theme.
+- `configs/local/lmstudio-infographic-flat.yaml` — fully flat vector cards/panels + local background only (no img2img).
 - `configs/local/tailnet-hybrid.yaml` — vision roles on Studio 122B, text/IR roles local, local 9B fallback.
 - `configs/local/m1ultra-remote.yaml` — M1 Ultra Studio `gemma4:12b` via Ollama, fast IR, local 9B fallback.
 - `configs/local/studio128-quality.yaml` — all roles on Studio 122B.

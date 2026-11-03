@@ -81,7 +81,7 @@ pipeline:
   infographic_img2img_calibrate: true
   infographic_img2img_mask_composite: true
   infographic_img2img_card_weight: 1.0
-  infographic_img2img_panel_weight: 0.30
+  infographic_img2img_panel_weight: 1.0
   infographic_show_edge_labels: false
   refinement_iterations: 2
   auto_refine: true

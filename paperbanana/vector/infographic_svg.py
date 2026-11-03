@@ -381,6 +381,7 @@ def render_infographic_svg(
     show_edge_labels: bool = False,
     mode: str = "full",
     background_opacity: float = 0.20,
+    draw_edges: Optional[bool] = None,
 ) -> str:
     """Return a rich 16:9 SVG for *ir*.
 
@@ -391,6 +392,7 @@ def render_infographic_svg(
     """
     overlay = mode == "overlay"
     structure = mode == "structure"
+    edges_visible = (not overlay) if draw_edges is None else draw_edges
     panels, boxes, edges = _layout(ir)
     panel_svg: list[str] = []
     clip_defs: list[str] = []
@@ -459,7 +461,7 @@ def render_infographic_svg(
         for i, box in enumerate(boxes.values())
     ]
     edge_svg = []
-    if not overlay:
+    if edges_visible:
         edge_svg = [
             _edge_svg(boxes[src], boxes[dst], label if show_edge_labels else "")
             for src, dst, label in edges
@@ -539,6 +541,7 @@ def write_infographic(
     show_edge_labels: bool = False,
     mode: str = "full",
     background_opacity: float = 0.20,
+    draw_edges: Optional[bool] = None,
     width: int = 3200,
 ) -> Path:
     """Write SVG/PNG/PDF next to *output_path* (base suffix is replaced)."""
@@ -555,6 +558,7 @@ def write_infographic(
             show_edge_labels=show_edge_labels,
             mode=mode,
             background_opacity=background_opacity,
+            draw_edges=draw_edges,
         ),
         encoding="utf-8",
     )
