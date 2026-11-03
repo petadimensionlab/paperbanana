@@ -1,8 +1,9 @@
 """Align a locally styled image back to the deterministic structure layout.
 
 Diffusion/ControlNet can shift panels by a few pixels.  The SVG text overlay is
-drawn in the original coordinate system, so the styled image is registered to
-the structure image with ORB + RANSAC before compositing.
+drawn in the original coordinate system, so each panel is located in the styled
+image by scale-aware template matching before compositing.  A low-confidence
+match rejects the style pass instead of producing misaligned text.
 """
 
 from __future__ import annotations
@@ -13,90 +14,6 @@ from typing import Optional
 import structlog
 
 logger = structlog.get_logger()
-
-
-def calibrate_styled_image(
-    structure_image: str | Path,
-    styled_image: str | Path,
-    output_image: str | Path,
-    *,
-    max_features: int = 5000,
-    ransac_threshold: float = 4.0,
-) -> Optional[Path]:
-    """Warp *styled_image* into *structure_image* coordinates.
-
-    Returns the calibrated image path, or None when OpenCV is unavailable or
-    too few reliable matches were found.
-    """
-    try:
-        import cv2
-        import numpy as np
-    except ImportError:
-        logger.info("OpenCV not available; skipping image calibration")
-        return None
-
-    structure = cv2.imread(str(structure_image), cv2.IMREAD_COLOR)
-    styled = cv2.imread(str(styled_image), cv2.IMREAD_COLOR)
-    if structure is None or styled is None:
-        logger.warning("Calibration input missing")
-        return None
-
-    height, width = structure.shape[:2]
-    if styled.shape[:2] != (height, width):
-        styled = cv2.resize(styled, (width, height), interpolation=cv2.INTER_AREA)
-
-    gray_structure = cv2.cvtColor(structure, cv2.COLOR_BGR2GRAY)
-    gray_styled = cv2.cvtColor(styled, cv2.COLOR_BGR2GRAY)
-
-    orb = cv2.ORB_create(max_features)
-    kp_structure, des_structure = orb.detectAndCompute(gray_structure, None)
-    kp_styled, des_styled = orb.detectAndCompute(gray_styled, None)
-    if des_structure is None or des_styled is None:
-        logger.info("Calibration found no descriptors; using uncalibrated image")
-        return None
-
-    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-    raw_matches = matcher.knnMatch(des_styled, des_structure, k=2)
-    good = [
-        m
-        for pair in raw_matches
-        if len(pair) == 2
-        for m, n in [pair]
-        if m.distance < 0.75 * n.distance
-    ]
-    if len(good) < 10:
-        logger.info("Calibration had too few matches", matches=len(good))
-        return None
-
-    src = np.float32([kp_styled[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
-    dst = np.float32([kp_structure[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
-    matrix, inliers = cv2.estimateAffinePartial2D(
-        src, dst, method=cv2.RANSAC, ransacReprojThreshold=ransac_threshold
-    )
-    if matrix is None:
-        logger.info("Calibration affine estimation failed")
-        return None
-
-    warped = cv2.warpAffine(
-        styled,
-        matrix,
-        (width, height),
-        flags=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_REFLECT,
-    )
-    out = Path(output_image)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(out), warped)
-    inlier_count = int(inliers.sum()) if inliers is not None else 0
-    logger.info(
-        "Calibrated styled image",
-        matches=len(good),
-        inliers=inlier_count,
-        scale=float((matrix[0, 0] ** 2 + matrix[0, 1] ** 2) ** 0.5),
-        dx=float(matrix[0, 2]),
-        dy=float(matrix[1, 2]),
-    )
-    return out
 
 
 def calibrate_panels(
