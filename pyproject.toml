@@ -66,6 +66,7 @@ dev = [
 ]
 pdf = ["pymupdf>=1.24"]
 studio = ["gradio>=4.44"]
+local = ["opencv-python-headless>=4.10"]
 
 [project.urls]
 Homepage = "https://github.com/llmsresearch/paperbanana"

@@ -55,6 +55,7 @@ class IRVisualizerAgent(BaseAgent):
         img2img_prompt: str = "",
         img2img_model: str = "flux2-klein-4b",
         img2img_bin: Optional[str] = None,
+        img2img_calibrate: bool = True,
         show_edge_labels: bool = False,
     ):
         super().__init__(vlm_provider, prompt_dir, prompt_recorder=prompt_recorder)
@@ -72,6 +73,7 @@ class IRVisualizerAgent(BaseAgent):
         self.img2img_prompt = img2img_prompt
         self.img2img_model = img2img_model
         self.img2img_bin = img2img_bin
+        self.img2img_calibrate = img2img_calibrate
         self.show_edge_labels = show_edge_labels
         self.structurer = StructurerAgent(
             vlm_provider, prompt_dir=prompt_dir, prompt_recorder=prompt_recorder
@@ -187,6 +189,25 @@ class IRVisualizerAgent(BaseAgent):
                     width=1536,
                     height=864,
                 )
+                if styled is not None and self.img2img_calibrate:
+                    from paperbanana.local.calibrate import calibrate_panels
+                    from paperbanana.vector.infographic_svg import (
+                        CANVAS_H,
+                        CANVAS_W,
+                        _layout,
+                    )
+
+                    panels, _, _ = _layout(ir)
+                    sx = 1536 / CANVAS_W
+                    sy = 864 / CANVAS_H
+                    rects = [(p.x * sx, p.y * sy, p.w * sx, p.h * sy) for p in panels]
+                    styled = await asyncio.to_thread(
+                        calibrate_panels,
+                        structure_base,
+                        styled,
+                        iter_dir / "styled_calibrated.png",
+                        rects,
+                    )
                 if styled is not None:
                     svg_path = write_infographic(
                         ir,

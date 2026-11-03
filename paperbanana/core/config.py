@@ -118,6 +118,7 @@ class Settings(BaseSettings):
         default="flux2-klein-4b", alias="INFOGRAPHIC_IMG2IMG_MODEL"
     )
     infographic_img2img_bin: Optional[str] = Field(default=None, alias="INFOGRAPHIC_IMG2IMG_BIN")
+    infographic_img2img_calibrate: bool = Field(default=True, alias="INFOGRAPHIC_IMG2IMG_CALIBRATE")
     infographic_show_edge_labels: bool = Field(default=False, alias="INFOGRAPHIC_SHOW_EDGE_LABELS")
     num_candidates: int = Field(
         default=1,
@@ -539,6 +540,7 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.infographic_img2img_prompt": "infographic_img2img_prompt",
         "pipeline.infographic_img2img_model": "infographic_img2img_model",
         "pipeline.infographic_img2img_bin": "infographic_img2img_bin",
+        "pipeline.infographic_img2img_calibrate": "infographic_img2img_calibrate",
         "pipeline.infographic_show_edge_labels": "infographic_show_edge_labels",
         "output.dir": "output_dir",
         "output.format": "output_format",

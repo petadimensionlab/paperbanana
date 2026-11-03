@@ -323,6 +323,7 @@ class PaperBananaPipeline:
                 img2img_prompt=self.settings.infographic_img2img_prompt,
                 img2img_model=self.settings.infographic_img2img_model,
                 img2img_bin=self.settings.infographic_img2img_bin,
+                img2img_calibrate=self.settings.infographic_img2img_calibrate,
                 show_edge_labels=self.settings.infographic_show_edge_labels,
             )
         else:

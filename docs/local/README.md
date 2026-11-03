@@ -129,8 +129,11 @@ Without `rsvg-convert`, the SVG is still written.
 recommended for final figures yet: local img2img can shift cards, so the
 overlaid text may no longer align. ControlNet would preserve geometry, but the
 FLUX.1-dev ControlNet checkpoints are gated, and the Qwen-Image ControlNet
-variant still shifts boxes slightly. Keep the default deterministic
-infographic + local panel/icon assets for publication output.
+variant still shifts boxes slightly. A panel-level calibration pass
+(`paperbanana/local/calibrate.py`) rejects low-confidence matches and falls back
+to the vector-only render, so an experimental style pass cannot silently produce
+misaligned text. Keep the default deterministic infographic + local panel/icon
+assets for publication output.
 
 ## Routing between local/self-hosted providers
 
