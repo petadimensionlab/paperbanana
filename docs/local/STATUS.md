@@ -39,7 +39,7 @@ This file is the resume point. Read it first after an interrupted session.
 | 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, dynamic panel illustrations |
 | 6b. IR quality via LM Studio | DONE | `lmstudio` provider + Qwen3.6-35B-A3B; latest run 18 nodes / 17 edges / 4 groups, no cycles |
 | 6c. Container normalization | DONE | flatten duplicate Encoder/Decoder container nodes and apply final critic IR |
-| 7. img2img/ControlNet | EXPERIMENTAL | card calibration + mask compositing keeps card geometry; FLUX ControlNet gated. Hybrid is usable, vector remains default |
+| 7. img2img/ControlNet | EXPERIMENTAL | card calibration + mask compositing; `card_weight: 1.0` gives flat cards. FLUX ControlNet gated; vector remains default |
 | 8. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
 
 ## Verified locally

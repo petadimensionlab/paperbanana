@@ -134,8 +134,10 @@ variant still shifts boxes slightly. A card-level calibration pass
 the style pass if any card is low-confidence. After calibration,
 `paperbanana/local/mask_composite.py` keeps the deterministic card and panel
 geometry, compositing the styled image underneath with configurable weights
-(`infographic_img2img_card_weight`, `infographic_img2img_panel_weight`). This
-keeps card size uniform and the SVG text aligned; if calibration fails, the
+(`infographic_img2img_card_weight`, `infographic_img2img_panel_weight`). Set
+`card_weight: 1.0` to make cards completely flat (structure only) while keeping
+panel/background texture; 0.72 keeps a little diffusion texture inside cards.
+This keeps card size uniform and the SVG text aligned; if calibration fails, the
 pipeline falls back to the vector-only render. Keep the default deterministic infographic + local panel/icon
 assets for publication output.
 
