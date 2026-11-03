@@ -39,7 +39,7 @@ This file is the resume point. Read it first after an interrupted session.
 | 6. Hybrid infographic (D) | DONE (prototype) | 16:9 SVG/PDF, panels, local mflux background, per-node icons, dynamic panel illustrations |
 | 6b. IR quality via LM Studio | DONE | `lmstudio` provider + Qwen3.6-35B-A3B; latest run 18 nodes / 17 edges / 4 groups, no cycles |
 | 6c. Container normalization | DONE | flatten duplicate Encoder/Decoder container nodes and apply final critic IR |
-| 7. img2img/ControlNet | EXPERIMENTAL | card-level calibration aligns text; FLUX ControlNet gated; Qwen shifts cards. Default remains deterministic vector |
+| 7. img2img/ControlNet | EXPERIMENTAL | card calibration + mask compositing keeps card geometry; FLUX ControlNet gated. Hybrid is usable, vector remains default |
 | 8. Benchmarks | TODO | Mac mini 64 / M3 Max 128 / Studio / Spark |
 
 ## Verified locally
@@ -84,9 +84,9 @@ Phase 8: benchmarks and a usable ControlNet path.
 
 1. Benchmark on Mac mini 64GB / M3 Max 128GB / Studio / DGX Spark.
 2. Measure JSON validity, IR label/edge fidelity, time per figure, and memory.
-3. Card-level calibration is implemented and safe (falls back below 0.60).
-   Remaining hybrid issues are irregular card widths and diffusion artifacts;
-   evaluate whether the visual gain is worth it before enabling by default.
+3. Card-level calibration + mask compositing is implemented and safe. The
+   latest hybrid run keeps uniform card geometry; remaining issues are faint
+   diffusion artifacts and occasional IR edge errors.
 4. Add `paperbanana local doctor` and `local render` CLI.
 
 Release: https://github.com/petadimensionlab/paperbanana/releases/tag/v0.3.0%2Bpetadim.1

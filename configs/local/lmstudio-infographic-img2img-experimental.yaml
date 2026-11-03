@@ -78,6 +78,10 @@ pipeline:
   infographic_img2img: true
   infographic_img2img_strength: 0.45
   infographic_img2img_model: flux2-klein-4b
+  infographic_img2img_calibrate: true
+  infographic_img2img_mask_composite: true
+  infographic_img2img_card_weight: 0.72
+  infographic_img2img_panel_weight: 0.30
   infographic_show_edge_labels: false
   refinement_iterations: 2
   auto_refine: true

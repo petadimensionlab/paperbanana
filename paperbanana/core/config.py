@@ -119,6 +119,15 @@ class Settings(BaseSettings):
     )
     infographic_img2img_bin: Optional[str] = Field(default=None, alias="INFOGRAPHIC_IMG2IMG_BIN")
     infographic_img2img_calibrate: bool = Field(default=True, alias="INFOGRAPHIC_IMG2IMG_CALIBRATE")
+    infographic_img2img_mask_composite: bool = Field(
+        default=True, alias="INFOGRAPHIC_IMG2IMG_MASK_COMPOSITE"
+    )
+    infographic_img2img_card_weight: float = Field(
+        default=0.72, alias="INFOGRAPHIC_IMG2IMG_CARD_WEIGHT"
+    )
+    infographic_img2img_panel_weight: float = Field(
+        default=0.30, alias="INFOGRAPHIC_IMG2IMG_PANEL_WEIGHT"
+    )
     infographic_show_edge_labels: bool = Field(default=False, alias="INFOGRAPHIC_SHOW_EDGE_LABELS")
     num_candidates: int = Field(
         default=1,
@@ -541,6 +550,9 @@ def _flatten_yaml(config: dict, prefix: str = "") -> dict:
         "pipeline.infographic_img2img_model": "infographic_img2img_model",
         "pipeline.infographic_img2img_bin": "infographic_img2img_bin",
         "pipeline.infographic_img2img_calibrate": "infographic_img2img_calibrate",
+        "pipeline.infographic_img2img_mask_composite": "infographic_img2img_mask_composite",
+        "pipeline.infographic_img2img_card_weight": "infographic_img2img_card_weight",
+        "pipeline.infographic_img2img_panel_weight": "infographic_img2img_panel_weight",
         "pipeline.infographic_show_edge_labels": "infographic_show_edge_labels",
         "output.dir": "output_dir",
         "output.format": "output_format",

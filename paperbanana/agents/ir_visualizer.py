@@ -56,6 +56,9 @@ class IRVisualizerAgent(BaseAgent):
         img2img_model: str = "flux2-klein-4b",
         img2img_bin: Optional[str] = None,
         img2img_calibrate: bool = True,
+        img2img_mask_composite: bool = True,
+        img2img_card_weight: float = 0.72,
+        img2img_panel_weight: float = 0.30,
         show_edge_labels: bool = False,
     ):
         super().__init__(vlm_provider, prompt_dir, prompt_recorder=prompt_recorder)
@@ -74,6 +77,9 @@ class IRVisualizerAgent(BaseAgent):
         self.img2img_model = img2img_model
         self.img2img_bin = img2img_bin
         self.img2img_calibrate = img2img_calibrate
+        self.img2img_mask_composite = img2img_mask_composite
+        self.img2img_card_weight = img2img_card_weight
+        self.img2img_panel_weight = img2img_panel_weight
         self.show_edge_labels = show_edge_labels
         self.structurer = StructurerAgent(
             vlm_provider, prompt_dir=prompt_dir, prompt_recorder=prompt_recorder
@@ -197,10 +203,10 @@ class IRVisualizerAgent(BaseAgent):
                         _layout,
                     )
 
-                    _, boxes, _ = _layout(ir)
+                    panels, boxes, _ = _layout(ir)
                     sx = 1536 / CANVAS_W
                     sy = 864 / CANVAS_H
-                    rects = [
+                    card_rects = [
                         (
                             node_id,
                             box.x * sx,
@@ -215,8 +221,26 @@ class IRVisualizerAgent(BaseAgent):
                         structure_base,
                         styled,
                         iter_dir / "styled_calibrated.png",
-                        rects,
+                        card_rects,
                     )
+
+                    if styled is not None and self.img2img_mask_composite:
+                        from paperbanana.local.mask_composite import (
+                            composite_with_card_masks,
+                        )
+
+                        card_shapes = [(x, y, w, h) for _, x, y, w, h in card_rects]
+                        panel_shapes = [(p.x * sx, p.y * sy, p.w * sx, p.h * sy) for p in panels]
+                        styled = await asyncio.to_thread(
+                            composite_with_card_masks,
+                            structure_base,
+                            styled,
+                            iter_dir / "styled_masked.png",
+                            card_shapes,
+                            panel_shapes,
+                            card_structure_weight=self.img2img_card_weight,
+                            panel_structure_weight=self.img2img_panel_weight,
+                        )
                 if styled is not None:
                     svg_path = write_infographic(
                         ir,
