@@ -190,19 +190,28 @@ class IRVisualizerAgent(BaseAgent):
                     height=864,
                 )
                 if styled is not None and self.img2img_calibrate:
-                    from paperbanana.local.calibrate import calibrate_panels
+                    from paperbanana.local.calibrate import calibrate_cards
                     from paperbanana.vector.infographic_svg import (
                         CANVAS_H,
                         CANVAS_W,
                         _layout,
                     )
 
-                    panels, _, _ = _layout(ir)
+                    _, boxes, _ = _layout(ir)
                     sx = 1536 / CANVAS_W
                     sy = 864 / CANVAS_H
-                    rects = [(p.x * sx, p.y * sy, p.w * sx, p.h * sy) for p in panels]
+                    rects = [
+                        (
+                            node_id,
+                            box.x * sx,
+                            box.y * sy,
+                            box.w * sx,
+                            box.h * sy,
+                        )
+                        for node_id, box in boxes.items()
+                    ]
                     styled = await asyncio.to_thread(
-                        calibrate_panels,
+                        calibrate_cards,
                         structure_base,
                         styled,
                         iter_dir / "styled_calibrated.png",

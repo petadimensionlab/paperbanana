@@ -420,7 +420,14 @@ def render_infographic_svg(
                 f'href="{_image_data_uri(str(panel_file))}"/>'
             )
         panel_rect = ""
-        if not overlay:
+        if overlay:
+            # Cover diffusion-generated pseudo-text in the panel header.
+            panel_rect = (
+                f'<rect x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" '
+                f'height="{PANEL_LABEL_H + 8:.1f}" rx="12" fill="{fill}" '
+                'opacity="0.92"/>'
+            )
+        elif not overlay:
             panel_rect = (
                 f'<rect x="{panel.x:.1f}" y="{panel.y:.1f}" width="{panel.w:.1f}" '
                 f'height="{panel.h:.1f}" rx="18" fill="{fill}" stroke="{stroke}" '
